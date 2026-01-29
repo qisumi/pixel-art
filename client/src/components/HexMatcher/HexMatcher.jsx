@@ -40,41 +40,13 @@ function HexMatcher({ onSelectColor, colors = [] }) {
       const result = await api.colors.match(hex);
       
       // Get the best match
-      setMatchResult(result);
-      
-      // Find alternative matches (closest 4 colors by sorting all colors by distance)
-      const allDistances = colors.map(color => {
-        // Calculate simple RGB distance (approximation)
-        const inputRgb = hexToRgb('#' + hex);
-        const colorRgb = hexToRgb(color.hex);
-        const distance = Math.sqrt(
-          Math.pow(inputRgb[0] - colorRgb[0], 2) +
-          Math.pow(inputRgb[1] - colorRgb[1], 2) +
-          Math.pow(inputRgb[2] - colorRgb[2], 2)
-        );
-        return { ...color, distance };
-      }).sort((a, b) => a.distance - b.distance);
-      
-      // Get top 5 alternatives (excluding the best match if it's the same)
-      const alts = allDistances
-        .filter(c => c.code !== result.code)
-        .slice(0, 4);
-      
-      setAlternatives(alts);
+      setMatchResult(result.match || null);
+      setAlternatives(Array.isArray(result.alternatives) ? result.alternatives : []);
     } catch (err) {
       setError(err.message || '匹配失败');
     } finally {
       setLoading(false);
     }
-  }
-
-  function hexToRgb(hex) {
-    let value = hex.startsWith('#') ? hex.slice(1) : hex;
-    if (value.length === 3) {
-      value = value.split('').map(c => c + c).join('');
-    }
-    const num = parseInt(value, 16);
-    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
   }
 
   function handleKeyPress(e) {

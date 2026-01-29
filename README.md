@@ -47,8 +47,8 @@ npm run dev
 ```
 
 - 前端：http://localhost:5173
-- 后端：http://localhost:3001
-- 健康检查：http://localhost:3001/api/health
+- 后端：http://localhost:4571
+- 健康检查：http://localhost:4571/api/health
 
 ## 常用脚本
 
@@ -71,13 +71,13 @@ npm run dev
 
 ```ini
 # .env
-PORT=3001
+PORT=4571
 DATABASE_PATH=./data/pixelart.db
 LOG_LEVEL=info
 NODE_ENV=development
 ```
 
-- `PORT`：后端端口（默认 3001）
+- `PORT`：后端端口（默认 4571）
 - `DATABASE_PATH`：SQLite 文件路径（默认 `./data/pixelart.db`）
 - `LOG_LEVEL`：pino 日志级别（默认 info）
 - `NODE_ENV`：development 时启用 `pino-pretty`
@@ -171,7 +171,7 @@ npm start
 ```
 
 - 前端构建产物：`client/dist`
-- 开发模式下前端通过 Vite proxy 访问 `/api` → `http://localhost:3001`
+- 开发模式下前端通过 Vite proxy 访问 `/api` → `http://localhost:4571`
 - 生产模式下后端（`server/index.js`）会自动托管 `client/dist` 静态文件，并对前端路由做 SPA 回退（无需额外静态服务器也可运行）
 
 ## 使用 PM2 部署（推荐）
@@ -237,7 +237,7 @@ server {
   }
 
   location /api/ {
-    proxy_pass http://127.0.0.1:3001;
+    proxy_pass http://127.0.0.1:4571;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

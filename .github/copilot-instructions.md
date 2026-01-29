@@ -109,14 +109,14 @@ Konva Stage (视口)
 npm run dev  # → concurrently dev:server + dev:client
 
 # 或分别启动
-npm run dev:server  # → node --watch server/index.js (port 3001)
-npm run dev:client  # → vite dev (port 5173, proxy /api → 3001)
+npm run dev:server  # → node --watch server/index.js (port 4571)
+npm run dev:client  # → vite dev (port 5173, proxy /api → 4571)
 
 # 首次运行需初始化数据库
 npm run db:init  # → 创建 data/pixelart.db
 ```
 
-**Vite 代理配置**: `client/vite.config.js` 中 `/api` 请求代理到 `localhost:3001`
+**Vite 代理配置**: `client/vite.config.js` 中 `/api` 请求代理到 `localhost:4571`
 
 ### 数据库管理
 
@@ -136,7 +136,7 @@ npm start            # → node server/index.js (生产模式)
 
 **环境变量** (`.env`):
 ```
-PORT=3001
+PORT=4571
 DATABASE_PATH=./data/pixelart.db
 LOG_LEVEL=info
 NODE_ENV=production
