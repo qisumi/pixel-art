@@ -120,11 +120,11 @@ function PatternListPage() {
               <span className="title-icon"><Grid3X3 size={36} /></span>
               Pixel Gallery
             </h1>
-            <p className="page-subtitle">Explore the universe of pixel art creations</p>
+                      <p className="page-subtitle">探索像素艺术创作的世界</p>
           </div>
           <Link to="/new" className="btn btn-primary glow-effect">
             <Plus size={20} />
-            <span>New Pattern</span>
+            <span>创建图纸</span>
           </Link>
         </header>
 
@@ -134,13 +134,13 @@ function PatternListPage() {
               <Search size={18} className="search-icon" />
               <input
                 type="text"
-                placeholder="Search patterns..."
+                placeholder="搜索图纸..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 className="search-input"
               />
             </div>
-            <button type="submit" className="btn btn-primary">Search</button>
+            <button type="submit" className="btn btn-primary">搜索</button>
           </form>
 
           {tags.length > 0 && (
@@ -174,10 +174,10 @@ function PatternListPage() {
             <div className="empty-icon">
               <Sparkles size={48} />
             </div>
-            <h3>No patterns found</h3>
-            <p>Be the first to create something amazing in this category.</p>
+            <h3>未找到图纸</h3>
+            <p>成为第一个在此类别中创建精彩作品的人。</p>
             <Link to="/new" className="btn btn-primary mt-4">
-              Create Pattern
+              创建图纸
             </Link>
           </div>
         ) : (
@@ -381,27 +381,47 @@ function PatternListPage() {
           text-decoration: none;
           color: inherit;
           border-radius: var(--radius-lg);
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, border-color 0.3s ease;
           height: 100%;
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(99, 102, 241, 0.08);
+          background: linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.75));
+          position: relative;
+          overflow: hidden;
         }
 
         .pattern-card:hover {
-          transform: translateY(-8px) scale(1.02);
-          border-color: rgba(0, 0, 0, 0.15);
-          box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+          transform: translateY(-10px) scale(1.02);
+          border-color: rgba(99, 102, 241, 0.35);
+          box-shadow: 0 22px 45px -15px rgba(30, 41, 59, 0.25), 0 0 0 1px rgba(99, 102, 241, 0.08);
           z-index: 10;
+        }
+
+        .pattern-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 10% 0%, rgba(99, 102, 241, 0.12), transparent 45%),
+                      radial-gradient(circle at 90% 20%, rgba(14, 165, 233, 0.08), transparent 40%);
+          opacity: 0.6;
+          pointer-events: none;
+          transition: opacity 0.3s ease;
+        }
+
+        .pattern-card:hover::before {
+          opacity: 1;
         }
 
         .pattern-card-preview {
           height: 200px;
-          background: #ffffff;
+          background:
+            linear-gradient(140deg, rgba(99, 102, 241, 0.08), rgba(255, 255, 255, 0.6)),
+            repeating-linear-gradient(45deg, rgba(148, 163, 184, 0.2) 0 10px, rgba(255, 255, 255, 0.2) 10px 20px);
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+          border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
         
         .preview-content {
@@ -411,7 +431,7 @@ function PatternListPage() {
           gap: 0.5rem;
           color: var(--color-text-muted);
           z-index: 2;
-          transition: all 0.3s ease;
+          transition: transform 0.3s ease, color 0.3s ease;
         }
         
         .pattern-card:hover .preview-content {
@@ -422,7 +442,7 @@ function PatternListPage() {
         .preview-overlay {
           position: absolute;
           inset: 0;
-          background: rgba(255, 255, 255, 0.1);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.0), rgba(99, 102, 241, 0.08));
           opacity: 0;
           transition: opacity 0.3s ease;
         }
@@ -435,16 +455,19 @@ function PatternListPage() {
           content: '';
           position: absolute;
           inset: 0;
+          background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.6), transparent 60%);
           pointer-events: none;
         }
 
         .pattern-size {
           font-family: monospace;
           font-size: 0.75rem;
-          background: rgba(0,0,0,0.5);
-          padding: 0.2rem 0.5rem;
-          border-radius: 4px;
-          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(15, 23, 42, 0.65);
+          color: #e2e8f0;
+          padding: 0.25rem 0.6rem;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.2);
+          letter-spacing: 0.02em;
         }
 
         .pattern-card-content {
@@ -453,6 +476,8 @@ function PatternListPage() {
           flex-direction: column;
           gap: 0.75rem;
           flex: 1;
+          position: relative;
+          z-index: 1;
         }
 
         .pattern-card-title {
@@ -470,6 +495,16 @@ function PatternListPage() {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+
+        .pattern-card .tags .tag {
+          background: rgba(99, 102, 241, 0.08);
+          border-color: rgba(99, 102, 241, 0.2);
+          color: var(--color-primary-hover);
+        }
+
+        .pattern-card:hover .tags .tag {
+          background: rgba(99, 102, 241, 0.12);
         }
         
         .mt-4 {

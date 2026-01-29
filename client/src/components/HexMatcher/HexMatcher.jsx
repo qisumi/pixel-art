@@ -183,12 +183,12 @@ function HexMatcher({ onSelectColor, colors = [] }) {
         .hex-matcher {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 0.5rem;
         }
 
         .hex-input-row {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.35rem;
           align-items: center;
         }
 
@@ -198,21 +198,22 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           align-items: center;
           gap: 0.25rem;
           background: rgba(255, 255, 255, 0.9);
-          border: 2px solid rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(0, 0, 0, 0.1);
           border-radius: var(--radius-sm);
-          padding: 0.5rem 0.75rem;
+          padding: 0.25rem 0.5rem;
           transition: all var(--transition-fast);
         }
 
         .hex-input-wrapper:focus-within {
           border-color: var(--color-primary);
-          box-shadow: 0 0 0 3px var(--color-primary-muted);
+          box-shadow: 0 0 0 2px var(--color-primary-muted);
         }
 
         .hex-prefix {
           color: var(--color-text-muted);
           font-weight: 600;
-          font-family: 'Monaco', 'Menlo', monospace;
+          font-family: monospace;
+          font-size: 0.9rem;
         }
 
         .hex-input {
@@ -220,69 +221,69 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           border: none;
           background: transparent;
           outline: none;
-          font-size: 0.95rem;
-          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 0.9rem;
+          font-family: monospace;
           text-transform: uppercase;
           color: var(--color-text);
           font-weight: 500;
+          width: 100%;
         }
 
         .hex-input::placeholder {
           color: var(--color-text-muted);
           text-transform: none;
           font-family: var(--font-sans);
+          font-size: 0.8rem;
         }
 
         .hex-clear-btn {
-          padding: 0.25rem;
-          background: rgba(0, 0, 0, 0.05);
+          padding: 2px;
+          background: transparent;
           border: none;
-          border-radius: 4px;
           color: var(--color-text-muted);
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all var(--transition-fast);
         }
 
         .hex-clear-btn:hover {
-          background: rgba(0, 0, 0, 0.1);
           color: var(--color-text);
         }
 
         .btn-match {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
+          gap: 0.35rem;
+          padding: 0.35rem 0.75rem;
           white-space: nowrap;
+          font-size: 0.85rem;
         }
 
         .match-error {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
+          padding: 0.5rem;
           background: rgba(239, 68, 68, 0.1);
           border: 1px solid rgba(239, 68, 68, 0.3);
           border-radius: var(--radius-sm);
           color: #dc2626;
-          font-size: 0.875rem;
+          font-size: 0.8rem;
         }
 
         .match-results {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
-          padding: 0.75rem;
+          gap: 0.5rem;
+          padding: 0.5rem;
           background: rgba(255, 255, 255, 0.5);
           border: 1px solid rgba(0, 0, 0, 0.05);
           border-radius: var(--radius-sm);
         }
 
         .match-label {
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -293,69 +294,57 @@ function HexMatcher({ onSelectColor, colors = [] }) {
         .match-best, .match-alternatives {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
+          gap: 0.25rem;
         }
 
-        .match-color-item {
+        /* Best Match Item */
+        .match-color-item.best {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0.5rem 0.75rem;
+          padding: 0.5rem;
           background: white;
-          border: 2px solid rgba(0, 0, 0, 0.1);
+          border: 1px solid var(--color-border);
           border-radius: var(--radius-sm);
           cursor: pointer;
           transition: all var(--transition-fast);
         }
 
-        .match-color-item:hover {
+        .match-color-item.best:hover {
           border-color: var(--color-primary);
-          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-          transform: translateY(-1px);
+          background: var(--color-surface-hover);
         }
 
-        .match-color-item.best {
-          border-color: var(--color-primary);
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(99, 102, 241, 0.02));
-        }
-
-        .match-color-swatch {
-          width: 36px;
-          height: 36px;
-          border-radius: 6px;
-          border: 2px solid rgba(0, 0, 0, 0.1);
+        .match-color-item.best .match-color-swatch {
+          width: 32px;
+          height: 32px;
+          border-radius: 4px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
           flex-shrink: 0;
-          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .match-color-swatch.small {
-          width: 28px;
-          height: 28px;
         }
 
         .match-color-info {
           display: flex;
           flex-direction: column;
-          gap: 0.125rem;
           flex: 1;
         }
 
         .match-color-code {
           font-weight: 700;
-          font-size: 0.95rem;
+          font-size: 0.9rem;
           color: var(--color-text);
         }
 
         .match-color-hex {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           color: var(--color-text-muted);
-          font-family: 'Monaco', 'Menlo', monospace;
+          font-family: monospace;
         }
 
         .match-distance {
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           color: var(--color-text-muted);
-          font-family: 'Monaco', 'Menlo', monospace;
+          font-family: monospace;
           font-weight: 600;
         }
 
@@ -364,33 +353,55 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           flex-shrink: 0;
         }
 
+        /* Alternatives Grid */
         .match-alternatives-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-          gap: 0.5rem;
+          grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+          gap: 0.35rem;
         }
 
-        .match-alternatives .match-color-item {
-          padding: 0.5rem;
-          justify-content: flex-start;
+        .match-alternatives-grid .match-color-item {
+          display: flex;
+          position: relative;
+          padding: 2px;
+          background: white;
+          border: 2px solid transparent;
+          border-radius: 6px;
+          cursor: pointer;
+          width: 100%;
+          aspect-ratio: 1;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .match-alternatives-grid .match-color-item:hover {
+          border-color: var(--color-primary);
+          transform: scale(1.1);
+          z-index: 2;
+        }
+
+        .match-alternatives-grid .match-color-swatch {
+           width: 100%;
+           height: 100%;
+           border-radius: 4px;
+           border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .match-alternatives-grid .match-color-code {
+           position: absolute;
+           font-size: 0.6rem;
+           color: #000;
+           font-weight: 700;
+           background: rgba(255,255,255,0.7);
+           padding: 0 2px;
+           border-radius: 3px;
+           pointer-events: none;
+           text-shadow: 0 0 2px #fff;
         }
 
         @media (max-width: 640px) {
-          .hex-input-row {
-            flex-direction: column;
-          }
-
-          .hex-input-wrapper {
-            width: 100%;
-          }
-
-          .btn-match {
-            width: 100%;
-            justify-content: center;
-          }
-
           .match-alternatives-grid {
-            grid-template-columns: repeat(2, 1fr);
+             grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
           }
         }
       `}</style>

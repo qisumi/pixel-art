@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useBeforeUnload, unstable_usePrompt } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
@@ -9,6 +9,7 @@ import { PixelGrid } from '../components/PixelGrid/index.js';
 import { HexMatcher } from '../components/HexMatcher/index.js';
 import { ColorPicker } from '../components/ColorPicker/index.js';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp/index.js';
+import { UsageStats } from '../components/UsageStats/index.js';
 import Toast from '../components/Toast/index.js';
 import ConfirmDialog from '../components/ConfirmDialog/index.js';
 
@@ -20,6 +21,9 @@ function PatternEditPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [colors, setColors] = useState([]);
+  const [highlightCode, setHighlightCode] = useState(null);
+  const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
+  const [isUsageStatsOpen, setIsUsageStatsOpen] = useState(true);
   const initialFitDone = useRef(false);
   const { toast, showToast, clearToast } = useToast();
 
@@ -27,6 +31,13 @@ function PatternEditPage() {
 
   // 启用键盘快捷键
   useKeyboardShortcuts({ onSave: handleSave });
+  
+  // 移动端默认折叠用量统计
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsUsageStatsOpen(false);
+    }
+  }, []);
 
   const shouldBlockLeave = store.isDirty && !saving && !deleting;
   useBeforeUnload((event) => {
@@ -142,6 +153,9 @@ function PatternEditPage() {
 
   const handleDrawStart = useCallback(() => {
     store.startDrawing();
+    if (window.innerWidth <= 768) {
+      setIsMobilePaletteOpen(false);
+    }
   }, [store]);
 
   const handleDrawEnd = useCallback(() => {
@@ -159,7 +173,6 @@ function PatternEditPage() {
   const tools = [
     { id: 'brush', icon: Pencil, label: '画笔' },
     { id: 'eraser', icon: Eraser, label: '橡皮' },
-    { id: 'fill', icon: PaintBucket, label: '填充' },
   ];
 
   const handleSelectColor = useCallback((code) => {
@@ -187,6 +200,9 @@ function PatternEditPage() {
           zoom={store.zoom}
           panOffset={store.panOffset}
           showGrid={store.showGrid}
+          showCodes={true}
+          showCodesMinZoom={0.6}
+          highlightCode={highlightCode}
           currentTool={store.currentTool}
           currentColorIndex={store.currentColorIndex}
           onPixelClick={handlePixelClick}
@@ -208,13 +224,15 @@ function PatternEditPage() {
           <input
             type="text"
             className="name-input glass-input"
-            placeholder="Untitled Pattern"
+            placeholder="未命名图纸"
             value={store.name}
             onChange={(e) => store.setName(e.target.value)}
           />
         </div>
         <div className="editor-header-right">
-          <KeyboardShortcutsHelp />
+          <div className="hide-on-mobile">
+            <KeyboardShortcutsHelp />
+          </div>
           {store.patternId && (
             <button
               className="btn btn-secondary"
@@ -222,12 +240,12 @@ function PatternEditPage() {
               disabled={saving || deleting}
             >
               <Trash2 size={18} />
-              删除
+              <span>删除</span>
             </button>
           )}
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <Save size={18} />
-            {saving ? 'Saving...' : 'Save Pattern'}
+            <span>{saving ? '保存中...' : '保存图纸'}</span>
           </button>
         </div>
       </header>
@@ -276,14 +294,14 @@ function PatternEditPage() {
             <Grid3X3 size={20} />
           </button>
           <button
-            className="btn glass-button btn-icon"
+            className="btn glass-button btn-icon hide-on-mobile"
             onClick={() => store.setZoom(store.zoom + 0.25)}
             title="Zoom In"
           >
             <ZoomIn size={20} />
           </button>
           <button
-            className="btn glass-button btn-icon"
+            className="btn glass-button btn-icon hide-on-mobile"
             onClick={() => store.setZoom(store.zoom - 0.25)}
             title="Zoom Out"
           >
@@ -304,9 +322,22 @@ function PatternEditPage() {
             <RotateCcw size={20} />
           </button>
         </div>
+
+        <div className="tool-group mobile-only-tool">
+          <div className="divider-horizontal"></div>
+          <button 
+             className={`btn glass-button btn-icon ${isMobilePaletteOpen ? 'active' : ''}`}
+             onClick={() => setIsMobilePaletteOpen(!isMobilePaletteOpen)}
+          >
+            <Palette size={20} />
+          </button>
+        </div>
       </aside>
 
-      <footer className="editor-palette glass-panel">
+      <footer className={`editor-palette glass-panel ${isMobilePaletteOpen ? 'mobile-open' : ''}`}>
+        <div className="mobile-palette-handle" onClick={() => setIsMobilePaletteOpen(!isMobilePaletteOpen)}>
+          <div className="handle-bar"></div>
+        </div>
         <div className="palette-section">
           <div className="palette-section-header">
             <h3>HEX 颜色匹配</h3>
@@ -329,6 +360,36 @@ function PatternEditPage() {
             currentColorCode={store.palette[store.currentColorIndex]}
             onSelectColor={handleSelectColor}
           />
+        </div>
+
+        <div className="palette-divider" />
+
+        <div className="palette-section palette-section-usage">
+          <div 
+            className="palette-section-header" 
+            onClick={() => setIsUsageStatsOpen(!isUsageStatsOpen)}
+            style={{ cursor: 'pointer' }}
+          >
+            <h3>用量统计</h3>
+             <ChevronDown 
+              size={18} 
+              style={{
+                transform: isUsageStatsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+                color: 'var(--color-text-secondary)'
+              }} 
+            />
+          </div>
+          <div style={{ display: isUsageStatsOpen ? 'block' : 'none' }}>
+            <UsageStats
+              pixels={store.pixels}
+              palette={store.palette}
+              colors={colors}
+              showHeader={false}
+              maxBodyHeight={200}
+              onActiveCodeChange={setHighlightCode}
+            />
+          </div>
         </div>
       </footer>
 
@@ -394,6 +455,13 @@ function PatternEditPage() {
           display: flex;
           align-items: center;
           gap: 1rem;
+        }
+
+        .editor-header-right {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          flex-wrap: nowrap;
         }
 
         .divider-vertical {
@@ -490,6 +558,11 @@ function PatternEditPage() {
           flex-direction: column;
         }
 
+        .palette-section-usage {
+          flex: 0 0 auto;
+          min-height: 0;
+        }
+
         .palette-section-header {
           display: flex;
           align-items: center;
@@ -510,7 +583,37 @@ function PatternEditPage() {
           background: var(--glass-border);
         }
 
+        .mobile-only-tool {
+          display: none;
+        }
+
+        .hide-on-mobile {
+          display: block;
+        }
+
+        .mobile-palette-handle {
+          display: none;
+        }
+
+        @media (max-width: 1024px) {
+          .name-input.glass-input {
+            width: 220px;
+          }
+
+          .editor-palette {
+            width: 320px;
+          }
+        }
+
         @media (max-width: 768px) {
+          .hide-on-mobile {
+            display: none;
+          }
+
+          .mobile-only-tool {
+            display: flex;
+          }
+
           .editor-header {
             top: 0;
             left: 0;
@@ -519,24 +622,132 @@ function PatternEditPage() {
             border-top: none;
             border-left: none;
             border-right: none;
-            height: 60px;
-            padding: 0 1rem;
+            height: 56px;
+            padding: 0 0.75rem;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
           }
 
-          .editor-toolbar {
-            left: 0.5rem;
-            padding: 1rem 0.5rem;
-            gap: 1rem;
+          .editor-header-left {
+            gap: 0.5rem;
           }
 
-          .editor-palette {
-            bottom: 0.5rem;
-            width: calc(100% - 1rem);
-            padding: 0.75rem;
+          .editor-header-right {
+            display: flex;
+            gap: 0.5rem;
           }
           
+          .editor-header-right button span {
+             display: none;
+          }
+          
+          .editor-header-right button {
+             padding: 0.5rem;
+          }
+
           .name-input.glass-input {
-            width: 150px;
+            width: 120px;
+            font-size: 0.95rem;
+            padding: 0.35rem 0.5rem;
+          }
+
+          /* Bottom Toolbar */
+          .editor-toolbar {
+            top: auto;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            max-width: 95vw;
+            flex-direction: row;
+            padding: 0.5rem 0.75rem;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 60; /* Higher than palette when palette is closed, but wait... */
+          }
+
+          .tool-group {
+            flex-direction: row;
+            gap: 0.35rem;
+          }
+
+          .editor-toolbar .divider-horizontal {
+            width: 1px;
+            height: 20px;
+          }
+          
+          .tool-btn, .btn-icon {
+            width: 38px;
+            height: 38px;
+          }
+          
+          .tool-btn svg, .btn-icon svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          /* Slide-up Palette */
+          .editor-palette {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            top: auto;
+            width: 100%;
+            max-width: none;
+            height: min(70vh, calc(100vh - 72px - 1rem));
+            border-radius: 20px 20px 0 0;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(100%);
+            z-index: 50; 
+            background: #fff;
+            box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+          }
+
+          .editor-palette.mobile-open {
+            transform: translateY(0);
+            z-index: 100; /* Cover everything when open */
+          }
+
+          .mobile-palette-handle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            width: 100%;
+            cursor: pointer;
+            flex-shrink: 0;
+            background: rgba(0,0,0,0.02);
+            border-bottom: 1px solid var(--color-border);
+          }
+          
+          .handle-bar {
+            width: 40px;
+            height: 4px;
+            background: var(--color-border-light);
+            border-radius: 2px;
+          }
+
+          .palette-section {
+            padding: 0.75rem 1rem;
+          }
+
+          .palette-section-colors {
+            overflow: auto;
+            flex: 1;
+            min-height: 200px;
+          }
+          
+          /* Adjust Toast position so it's not behind toolbar/keyboard */
+          .toast-container {
+             bottom: 5rem;
+             left: 1rem; 
+             right: 1rem;
           }
         }
       `}</style>

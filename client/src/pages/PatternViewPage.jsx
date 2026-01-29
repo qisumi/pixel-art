@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Maximize2, Grid3X3, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, Edit, Maximize2, Grid3X3, ZoomIn, ZoomOut, ChevronDown } from 'lucide-react';
 import api from '../utils/api.js';
 import { decode } from '../utils/rle.js';
 import { PixelGrid } from '../components/PixelGrid/index.js';
+import { UsageStats } from '../components/UsageStats/index.js';
 
 function PatternViewPage() {
   const { id } = useParams();
@@ -13,8 +14,9 @@ function PatternViewPage() {
   const [zoom, setZoom] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [showGrid, setShowGrid] = useState(true);
-  const [showLegend, setShowLegend] = useState(false);
+  const [isUsageStatsOpen, setIsUsageStatsOpen] = useState(true);
   const [colors, setColors] = useState([]);
+  const [highlightCode, setHighlightCode] = useState(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const initialFitDone = useRef(false);
 
@@ -23,6 +25,12 @@ function PatternViewPage() {
     loadPattern();
     loadColors();
   }, [id]);
+
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsUsageStatsOpen(false);
+    }
+  }, []);
 
   const fitToScreen = useCallback((size, patternWidth, patternHeight) => {
     const BASE_PIXEL_SIZE = 16;
@@ -90,12 +98,6 @@ function PatternViewPage() {
     }
   }, [pattern, fitToScreen]);
 
-  function getColorHex(code) {
-    if (!code) return '#000000';
-    const color = colors.find(c => c.code === code);
-    return color?.hex || '#000000';
-  }
-
   if (loading) {
     return (
       <div className="page">
@@ -131,6 +133,9 @@ function PatternViewPage() {
             zoom={zoom}
             panOffset={panOffset}
             showGrid={showGrid}
+            showCodes={true}
+            showCodesMinZoom={0.6}
+            highlightCode={highlightCode}
             readonly={true}
             onZoom={setZoom}
             onPan={setPanOffset}
@@ -182,28 +187,34 @@ function PatternViewPage() {
         </button>
       </div>
 
-      <footer className={`view-legend glass-panel ${showLegend ? 'expanded' : ''}`}>
-        <button
-          className="legend-toggle"
-          onClick={() => setShowLegend(!showLegend)}
+      <aside className={`view-usage glass-panel ${isUsageStatsOpen ? 'mobile-open' : ''}`}>
+        <div
+          className="view-usage-header"
+          onClick={() => setIsUsageStatsOpen(!isUsageStatsOpen)}
         >
-          <span className="legend-title">色号说明</span>
-          <span className="legend-icon">{showLegend ? '▼' : '▲'}</span>
-        </button>
-        {showLegend && (
-          <div className="legend-content">
-            {pattern.palette.filter(Boolean).map((code) => (
-              <div key={code} className="legend-item">
-                <span
-                  className="legend-swatch"
-                  style={{ backgroundColor: getColorHex(code) }}
-                />
-                <span className="legend-code">{code}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </footer>
+          <div className="view-usage-handle" />
+          <span>用量统计</span>
+          <ChevronDown
+            size={18}
+            style={{
+              transform: isUsageStatsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
+              color: 'var(--color-text-secondary)',
+            }}
+          />
+        </div>
+        <div className="view-usage-body" style={{ display: isUsageStatsOpen ? 'block' : 'none' }}>
+          <UsageStats
+            pixels={pixels || []}
+            palette={pattern.palette}
+            colors={colors}
+            showHeader={false}
+            title="用量统计"
+            maxBodyHeight={180}
+            onActiveCodeChange={setHighlightCode}
+          />
+        </div>
+      </aside>
 
       <style>{`
         .view-page {
@@ -280,6 +291,41 @@ function PatternViewPage() {
           border-radius: var(--radius-lg);
         }
 
+        /* Usage Stats - Floating Bottom Left Panel */
+        .view-usage {
+          position: absolute;
+          bottom: 1.5rem;
+          left: 1.5rem;
+          z-index: 20;
+          width: 240px;
+          max-width: calc(100vw - 3rem);
+          border-radius: var(--radius-lg);
+          padding: 0.75rem 1rem;
+          overflow: hidden;
+        }
+
+        .view-usage-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: var(--color-text-secondary);
+          cursor: pointer;
+          margin-bottom: 0.5rem;
+          gap: 0.5rem;
+        }
+
+        .view-usage-handle {
+          display: none;
+        }
+
+        .view-usage-body {
+          display: block;
+        }
+
         .zoom-label {
           font-size: 0.875rem;
           min-width: 3.5rem;
@@ -288,93 +334,17 @@ function PatternViewPage() {
           font-variant-numeric: tabular-nums;
         }
 
-        /* Legend - Floating Bottom Center Panel */
-        .view-legend {
-          position: absolute;
-          bottom: 1.5rem;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 20;
-          width: auto;
-          min-width: 200px;
-          max-width: 60%;
-          border-radius: var(--radius-lg);
-          transition: all var(--transition-normal);
-          display: flex;
-          flex-direction: column;
-        }
-
-        .legend-toggle {
-          width: 100%;
-          padding: 0.75rem 1.5rem;
-          color: var(--color-text-secondary);
-          font-size: 0.875rem;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          cursor: pointer;
-          transition: color var(--transition-fast);
-        }
-
-        .legend-toggle:hover {
-          color: var(--color-text);
-        }
-
-        .legend-content {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-          padding: 0 1.5rem 1.5rem;
-          justify-content: center;
-          max-height: 200px;
-          overflow-y: auto;
-        }
-
-        /* Custom Scrollbar for Legend */
-        .legend-content::-webkit-scrollbar {
-          width: 4px;
-        }
-        
-        .legend-content::-webkit-scrollbar-thumb {
-          background: var(--color-border);
-          border-radius: 4px;
-        }
-
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(255, 255, 255, 0.03);
-          padding: 0.25rem 0.5rem;
-          border-radius: var(--radius-sm);
-          border: 1px solid transparent;
-        }
-
-        .legend-item:hover {
-          border-color: var(--glass-border);
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .legend-swatch {
-          width: 16px;
-          height: 16px;
-          border-radius: 4px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .legend-code {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--color-text-secondary);
-        }
-
         .btn.active {
           background: var(--color-primary);
           color: #000;
           box-shadow: 0 0 15px var(--color-primary-muted);
           border-color: transparent;
+        }
+
+        @media (max-width: 1024px) {
+          .view-title {
+            font-size: 1.1rem;
+          }
         }
 
         @media (max-width: 768px) {
@@ -387,7 +357,8 @@ function PatternViewPage() {
             border-left: none;
             border-right: none;
             height: 60px;
-            padding: 0 1rem;
+            padding: 0 0.75rem;
+            gap: 0.5rem;
           }
 
           .view-title {
@@ -399,15 +370,46 @@ function PatternViewPage() {
           }
 
           .view-controls {
-            bottom: 5rem; /* Move up to avoid legend overlap if expanded */
-            right: 1rem;
+            top: calc(60px + 0.75rem);
+            right: 0.75rem;
+            bottom: auto;
             padding: 0.5rem;
           }
 
-          .view-legend {
-            bottom: 1rem;
-            width: calc(100% - 2rem);
-            max-width: none;
+          .view-usage {
+            position: fixed;
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            top: auto;
+            width: auto;
+            max-height: 50vh;
+            border-radius: 16px 16px 12px 12px;
+            padding: 0.5rem 0.75rem 0.75rem;
+            transform: translateY(calc(100% - 44px));
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
+          }
+
+          .view-usage.mobile-open {
+            transform: translateY(0);
+          }
+
+          .view-usage-header {
+            margin-bottom: 0.35rem;
+          }
+
+          .view-usage-handle {
+            display: block;
+            width: 36px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--color-border-light);
+          }
+
+          .view-usage-body {
+            max-height: 36vh;
+            overflow: hidden;
           }
         }
       `}</style>

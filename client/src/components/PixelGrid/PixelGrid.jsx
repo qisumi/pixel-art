@@ -1,22 +1,22 @@
 import { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
-import { Stage, Layer, Rect, Line, Image, Group } from 'react-konva';
+import { Stage, Layer, Rect, Line, Image, Group, Text } from 'react-konva';
 import { useColorMap } from '../../hooks/useColorMap.js';
 
 const BASE_PIXEL_SIZE = 16;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 8;
 const GRID_LINE_COLOR = 'rgba(0, 0, 0, 0.05)';
-const EMPTY_COLOR = '#ffffff';
+const EMPTY_COLOR = 'transparent';
 
 function hexToRgb(hex) {
-  if (!hex) return [255, 255, 255];
+  if (!hex) return [0, 0, 0];
   let value = hex.startsWith('#') ? hex.slice(1) : hex;
   if (value.length === 3) {
     value = value.split('').map((ch) => ch + ch).join('');
   }
-  if (value.length !== 6) return [255, 255, 255];
+  if (value.length !== 6) return [0, 0, 0];
   const num = Number.parseInt(value, 16);
-  if (Number.isNaN(num)) return [255, 255, 255];
+  if (Number.isNaN(num)) return [0, 0, 0];
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
@@ -28,6 +28,9 @@ function PixelGrid({
   zoom = 1,
   panOffset = { x: 0, y: 0 },
   showGrid = true,
+  showCodes = false,
+  showCodesMinZoom = 0.6,
+  highlightCode = null,
   currentTool = 'brush',
   currentColorIndex = 0,
   readonly = false,
@@ -86,13 +89,55 @@ function PixelGrid({
   const paletteRgb = useMemo(() => {
     const length = Math.max(palette.length, 1);
     const rgb = new Array(length);
-    rgb[0] = hexToRgb(EMPTY_COLOR);
+    rgb[0] = null;
     for (let i = 1; i < palette.length; i += 1) {
-      const hex = getHex(palette[i]) || EMPTY_COLOR;
-      rgb[i] = hexToRgb(hex);
+      const hex = getHex(palette[i]);
+      rgb[i] = hex ? hexToRgb(hex) : null;
     }
     return rgb;
   }, [palette, getHex]);
+
+  const paletteTextColor = useMemo(() => {
+    const length = Math.max(palette.length, 1);
+    const colors = new Array(length);
+    colors[0] = null;
+    for (let i = 1; i < palette.length; i += 1) {
+      const rgb = paletteRgb[i];
+      if (!rgb) {
+        colors[i] = null;
+        continue;
+      }
+      const luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+      colors[i] = luminance >= 0.6 ? '#111827' : '#f8fafc';
+    }
+    return colors;
+  }, [palette.length, paletteRgb]);
+
+  const codeLabels = useMemo(() => {
+    if (!showCodes || scale < showCodesMinZoom) return [];
+    if (!Array.isArray(pixels) || !Array.isArray(palette)) return [];
+    const labels = [];
+    const pixelCount = width * height;
+    for (let i = 0; i < pixelCount; i += 1) {
+      const colorIndex = pixels[i] ?? 0;
+      if (!colorIndex) continue;
+      const code = palette[colorIndex];
+      if (!code) continue;
+      if (highlightCode && code !== highlightCode) continue;
+      const textColor = paletteTextColor[colorIndex];
+      if (!textColor) continue;
+      const x = i % width;
+      const y = Math.floor(i / width);
+      labels.push({
+        key: `${i}-${code}`,
+        text: code,
+        x: x * BASE_PIXEL_SIZE,
+        y: y * BASE_PIXEL_SIZE,
+        fill: textColor,
+      });
+    }
+    return labels;
+  }, [showCodes, showCodesMinZoom, scale, pixels, palette, paletteTextColor, width, height, highlightCode]);
 
   // Ensure the Konva <Image> gets a stable canvas reference on the very first render.
   // (Assigning to a ref doesn't trigger a re-render, so without this the image can stay blank
@@ -135,12 +180,22 @@ function PixelGrid({
 
     for (let i = 0; i < pixelCount; i += 1) {
       const colorIndex = pixels[i] ?? 0;
-      const rgb = paletteRgb[colorIndex] || paletteRgb[0];
       const offset = i * 4;
+      if (!colorIndex) {
+        data[offset + 3] = 0;
+        continue;
+      }
+      const rgb = paletteRgb[colorIndex];
+      if (!rgb) {
+        data[offset + 3] = 0;
+        continue;
+      }
+      const code = palette?.[colorIndex];
+      const isDimmed = highlightCode && code && code !== highlightCode;
       data[offset] = rgb[0];
       data[offset + 1] = rgb[1];
       data[offset + 2] = rgb[2];
-      data[offset + 3] = 255;
+      data[offset + 3] = isDimmed ? 70 : 255;
     }
 
     ctx.putImageData(imageData, 0, 0);
@@ -149,7 +204,7 @@ function PixelGrid({
       imageRef.current.image(pixelCanvasRef.current);
     }
     imageRef.current?.getLayer()?.batchDraw();
-  }, [pixels, paletteRgb, width, height, loading]);
+  }, [pixels, paletteRgb, palette, width, height, loading, highlightCode]);
 
   useEffect(() => {
     const safeZoom = Number.isFinite(zoom) ? Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom)) : 1;
@@ -628,6 +683,28 @@ function PixelGrid({
             />
           </Group>
         </Layer>
+        {showCodes && codeLabels.length > 0 && (
+          <Layer x={stagePosition.x} y={stagePosition.y} listening={false} imageSmoothingEnabled={false}>
+            <Group scaleX={scale} scaleY={scale}>
+              {codeLabels.map((label) => (
+                <Text
+                  key={label.key}
+                  x={label.x}
+                  y={label.y}
+                  width={BASE_PIXEL_SIZE}
+                  height={BASE_PIXEL_SIZE}
+                  text={label.text}
+                  fontSize={7}
+                  fontFamily="Menlo, Monaco, Consolas, 'Liberation Mono', monospace"
+                  fill={label.fill}
+                  align="center"
+                  verticalAlign="middle"
+                  listening={false}
+                />
+              ))}
+            </Group>
+          </Layer>
+        )}
         {showGrid && scale >= 0.25 && (
           <Layer x={stagePosition.x} y={stagePosition.y} listening={false} imageSmoothingEnabled={false}>
             <Group scaleX={scale} scaleY={scale}>

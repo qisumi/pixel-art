@@ -53,6 +53,28 @@ function ColorPicker({
     onSelectColor?.(code);
   };
 
+  const normalizeHex = (hex) => {
+    if (!hex) return null;
+    const trimmed = hex.trim().replace('#', '');
+    if (trimmed.length === 3) {
+      return `#${trimmed.split('').map((c) => c + c).join('')}`.toLowerCase();
+    }
+    if (trimmed.length === 6) {
+      return `#${trimmed}`.toLowerCase();
+    }
+    return null;
+  };
+
+  const isLightHex = (hex) => {
+    const normalized = normalizeHex(hex);
+    if (!normalized) return false;
+    const r = parseInt(normalized.slice(1, 3), 16);
+    const g = parseInt(normalized.slice(3, 5), 16);
+    const b = parseInt(normalized.slice(5, 7), 16);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return luminance >= 0.92;
+  };
+
   return (
     <div className="color-picker">
       <div className="color-picker-tabs">
@@ -88,20 +110,21 @@ function ColorPicker({
                 if (!color) return null;
                 
                 return (
-                  <div
+                  <button
                     key={`${code}-${index}`}
                     className={`palette-color-item ${currentColorCode === code ? 'active' : ''}`}
                     onClick={() => handleColorClick(code)}
+                    title={`${color.code} ${color.hex}`}
                   >
                     <span 
-                      className="palette-color-swatch"
+                      className={`palette-color-swatch ${isLightHex(color.hex) ? 'is-light' : ''}`}
                       style={{ backgroundColor: color.hex }}
-                    />
-                    <div className="palette-color-info">
-                      <span className="palette-color-code">{color.code}</span>
-                      <span className="palette-color-hex">{color.hex}</span>
-                    </div>
-                  </div>
+                    >
+                      <span className={`palette-color-code-overlay ${isLightHex(color.hex) ? 'text-dark' : 'text-light'}`}>
+                        {color.code}
+                      </span>
+                    </span>
+                  </button>
                 );
               })}
             </div>
@@ -157,10 +180,13 @@ function ColorPicker({
                           title={`${color.code} ${color.hex}`}
                         >
                           <span 
-                            className="color-swatch"
+                            className={`color-swatch ${isLightHex(color.hex) ? 'is-light' : ''}`}
                             style={{ backgroundColor: color.hex }}
-                          />
-                          <span className="color-code">{color.code}</span>
+                          >
+                             <span className={`color-code-overlay ${isLightHex(color.hex) ? 'text-dark' : 'text-light'}`}>
+                              {color.code}
+                            </span>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -288,7 +314,7 @@ function ColorPicker({
           text-align: left;
           font-weight: 600;
           color: var(--color-text);
-          font-size: 0.875rem;
+          font-size: 0.8rem;
         }
 
         .color-group-count {
@@ -299,9 +325,9 @@ function ColorPicker({
 
         .color-group-colors {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-          gap: 0.5rem;
-          padding: 0.75rem;
+          grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+          gap: 0.25rem;
+          padding: 0.5rem;
           background: rgba(0, 0, 0, 0.01);
           border-radius: var(--radius-sm);
           margin-top: 0.25rem;
@@ -311,101 +337,118 @@ function ColorPicker({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.375rem;
-          padding: 0.5rem;
+          padding: 2px;
           background: white;
-          border: 2px solid rgba(0, 0, 0, 0.05);
-          border-radius: var(--radius-sm);
+          border: 2px solid transparent;
+          border-radius: 6px;
           cursor: pointer;
           transition: all var(--transition-fast);
+          width: 100%;
+          aspect-ratio: 1;
         }
 
         .color-item:hover {
           border-color: var(--color-primary);
-          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-          transform: translateY(-2px);
+          z-index: 1;
+          transform: scale(1.1);
         }
 
         .color-item.in-palette {
           border-color: var(--color-success);
-          background: rgba(16, 185, 129, 0.05);
         }
 
         .color-item.active {
           border-color: var(--color-primary);
-          background: var(--color-primary-muted);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+          z-index: 2;
         }
 
         .color-swatch {
           width: 100%;
-          aspect-ratio: 1;
-          border-radius: 6px;
-          border: 2px solid rgba(0, 0, 0, 0.1);
-          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+          height: 100%;
+          border-radius: 4px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .palette-color-code-overlay,
+        .color-code-overlay {
+          font-size: 0.65rem;
+          font-weight: 700;
+          line-height: 1;
+          letter-spacing: -0.02em;
+        }
+        
+        .color-code-overlay.text-light,
+        .palette-color-code-overlay.text-light {
+          color: rgba(255, 255, 255, 0.95);
+          text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+        }
+        
+        .color-code-overlay.text-dark,
+        .palette-color-code-overlay.text-dark {
+          color: rgba(0, 0, 0, 0.85);
+          text-shadow: 0 1px 0px rgba(255,255,255,0.4);
         }
 
-        .color-code {
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: var(--color-text);
+        .color-swatch.is-light {
+          border-color: rgba(0, 0, 0, 0.15);
         }
+
+        /* Removed separate .color-code styles as it is now an overlay */
 
         .palette-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-          gap: 0.75rem;
+          grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+          gap: 0.35rem;
         }
 
         .palette-color-item {
           display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem;
+          padding: 2px;
           background: white;
-          border: 2px solid rgba(0, 0, 0, 0.05);
-          border-radius: var(--radius-sm);
+          border: 2px solid transparent;
+          border-radius: 6px;
           cursor: pointer;
           transition: all var(--transition-fast);
+          width: 100%;
+          aspect-ratio: 1;
         }
 
         .palette-color-item:hover {
           border-color: var(--color-primary);
-          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-          transform: translateY(-2px);
+          transform: scale(1.05);
+          z-index: 10;
         }
 
         .palette-color-item.active {
           border-color: var(--color-primary);
-          background: var(--color-primary-muted);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+          z-index: 5;
         }
 
         .palette-color-swatch {
-          width: 48px;
-          height: 48px;
-          border-radius: 8px;
-          border: 2px solid rgba(0, 0, 0, 0.1);
-          flex-shrink: 0;
-          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .palette-color-info {
+          width: 100%;
+          height: 100%;
+          border-radius: 4px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          position: relative;
           display: flex;
-          flex-direction: column;
-          gap: 0.125rem;
+          align-items: center;
+          justify-content: center;
         }
 
-        .palette-color-code {
-          font-weight: 700;
-          font-size: 0.95rem;
-          color: var(--color-text);
+
+        .palette-color-swatch.is-light {
+          border-color: rgba(0, 0, 0, 0.15);
         }
 
-        .palette-color-hex {
-          font-size: 0.75rem;
-          color: var(--color-text-muted);
-          font-family: 'Monaco', 'Menlo', monospace;
+        /* Removed separate info blocks */
+        .palette-color-info {
+           display: none;
         }
 
         .empty-palette, .no-results {
