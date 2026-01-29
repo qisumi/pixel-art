@@ -16,7 +16,15 @@ async function request(endpoint, options = {}) {
   }
 
   const response = await fetch(url, config);
-  const data = await response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+  const data = JSON.parse(text);
 
   if (!data.success) {
     const error = new Error(data.error?.message || 'Request failed');

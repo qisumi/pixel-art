@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link, useBeforeUnload, useBlocker } from 'react-router-dom';
+import { useParams, useNavigate, Link, useBeforeUnload } from 'react-router-dom';
 import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
@@ -22,13 +22,21 @@ function PatternEditPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showTagDeleteDialog, setShowTagDeleteDialog] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState(null);
   const [showImportExportDialog, setShowImportExportDialog] = useState(false);
   const [colors, setColors] = useState([]);
   const [highlightCode, setHighlightCode] = useState(null);
   const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
-  const [isUsageStatsOpen, setIsUsageStatsOpen] = useState(true);
+  const [isTagsOpen, setIsTagsOpen] = useState(false);
+  const [isHexOpen, setIsHexOpen] = useState(false);
+  const [isUsageStatsOpen, setIsUsageStatsOpen] = useState(false);
+  const [tagOptions, setTagOptions] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [tagLoading, setTagLoading] = useState(false);
   const initialFitDone = useRef(false);
   const { toast, showToast, clearToast } = useToast();
+  const pendingLeaveAction = useRef(null);
 
   const store = useEditorStore();
 
@@ -48,23 +56,19 @@ function PatternEditPage() {
     event.preventDefault();
     event.returnValue = '';
   });
-  const leaveBlocker = useBlocker(shouldBlockLeave);
-  useEffect(() => {
-    if (leaveBlocker.state === 'blocked') {
-      setShowLeaveDialog(true);
+
+  function requestLeave(action) {
+    if (!shouldBlockLeave) {
+      action();
       return;
     }
-    setShowLeaveDialog(false);
-  }, [leaveBlocker.state]);
-
-  useEffect(() => {
-    if (!shouldBlockLeave && leaveBlocker.state === 'blocked') {
-      leaveBlocker.reset();
-    }
-  }, [shouldBlockLeave, leaveBlocker]);
+    pendingLeaveAction.current = action;
+    setShowLeaveDialog(true);
+  }
 
   useEffect(() => {
     loadColors();
+    loadTags();
     if (id) {
       loadPattern(id);
     } else {
@@ -93,6 +97,19 @@ function PatternEditPage() {
     } catch (err) {
       console.error('Failed to load colors:', err);
       showToast('颜色数据加载失败', { type: 'error' });
+    }
+  }
+
+  async function loadTags() {
+    setTagLoading(true);
+    try {
+      const result = await api.tags.list();
+      setTagOptions(result);
+    } catch (err) {
+      console.error('Failed to load tags:', err);
+      showToast('标签加载失败', { type: 'error' });
+    } finally {
+      setTagLoading(false);
     }
   }
 
@@ -132,6 +149,84 @@ function PatternEditPage() {
       setSaving(false);
     }
   }
+
+  function normalizeTagName(name) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  function addTag(name) {
+    const next = normalizeTagName(name);
+    if (!next) return;
+    if (next.length > 30) {
+      showToast('标签长度不能超过 30 个字符', { type: 'warning' });
+      return;
+    }
+    const currentTags = Array.isArray(store.tags) ? store.tags : [];
+    if (currentTags.includes(next)) {
+      setTagInput('');
+      return;
+    }
+    store.setTags([...currentTags, next]);
+    setTagInput('');
+    setTagOptions((prev) => {
+      if (prev.some((tag) => tag.name === next)) return prev;
+      return [...prev, { id: `local-${next}`, name: next, count: 0 }].sort((a, b) =>
+        a.name.localeCompare(b.name, 'zh-CN')
+      );
+    });
+  }
+
+  function removeTag(name) {
+    const currentTags = Array.isArray(store.tags) ? store.tags : [];
+    store.setTags(currentTags.filter((tag) => tag !== name));
+  }
+
+  function requestDeleteTag(tag) {
+    setTagToDelete(tag);
+    setShowTagDeleteDialog(true);
+  }
+
+  async function confirmDeleteTag() {
+    if (!tagToDelete) return;
+    try {
+      await api.tags.delete(tagToDelete.id);
+      setTagOptions((prev) => prev.filter((item) => item.id !== tagToDelete.id));
+      removeTag(tagToDelete.name);
+      showToast('标签已删除', { type: 'success' });
+    } catch (err) {
+      showToast(`删除失败: ${err.message}`, { type: 'error' });
+    } finally {
+      setShowTagDeleteDialog(false);
+      setTagToDelete(null);
+    }
+  }
+
+  function handleTagInputKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ',' || event.key === '，' || event.key === ';' || event.key === '；') {
+      event.preventDefault();
+      addTag(tagInput);
+      return;
+    }
+    if (event.key === 'Backspace' && !tagInput) {
+      const currentTags = Array.isArray(store.tags) ? store.tags : [];
+      if (currentTags.length > 0) {
+        removeTag(currentTags[currentTags.length - 1]);
+      }
+    }
+  }
+
+  const filteredTagOptions = tagInput.trim()
+    ? tagOptions.filter((tag) => {
+        const currentTags = Array.isArray(store.tags) ? store.tags : [];
+        return (
+          !currentTags.includes(tag.name) &&
+          tag.name.toLowerCase().includes(tagInput.trim().toLowerCase())
+        );
+      })
+    : tagOptions.filter((tag) => {
+        const currentTags = Array.isArray(store.tags) ? store.tags : [];
+        return !currentTags.includes(tag.name);
+      });
 
   async function handleDelete() {
     if (!store.patternId) return;
@@ -231,7 +326,15 @@ function PatternEditPage() {
       
       <header className="editor-header glass-panel">
         <div className="editor-header-left">
-          <Link to="/" className="btn glass-button btn-icon">
+          <Link
+            to="/"
+            className="btn glass-button btn-icon"
+            onClick={(event) => {
+              if (!shouldBlockLeave) return;
+              event.preventDefault();
+              requestLeave(() => navigate('/'));
+            }}
+          >
             <ArrowLeft size={20} />
           </Link>
           <div className="divider-vertical"></div>
@@ -361,14 +464,118 @@ function PatternEditPage() {
         <div className="mobile-palette-handle" onClick={() => setIsMobilePaletteOpen(!isMobilePaletteOpen)}>
           <div className="handle-bar"></div>
         </div>
-        <div className="palette-section">
-          <div className="palette-section-header">
-            <h3>HEX 颜色匹配</h3>
+        <div className="palette-section palette-section-tags">
+          <button
+            type="button"
+            className="palette-section-header collapsible-header"
+            onClick={() => setIsTagsOpen(!isTagsOpen)}
+          >
+            <h3>标签</h3>
+            <ChevronDown
+              size={18}
+              style={{
+                transform: isTagsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+                color: 'var(--color-text-secondary)',
+              }}
+            />
+          </button>
+          <div className="tag-editor" style={{ display: isTagsOpen ? 'flex' : 'none' }}>
+            <div className="tag-input-row">
+              <input
+                type="text"
+                className="tag-input glass-input"
+                placeholder="输入标签，回车添加"
+                value={tagInput}
+                onChange={(event) => setTagInput(event.target.value)}
+                onKeyDown={handleTagInputKeyDown}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => addTag(tagInput)}
+                disabled={!tagInput.trim()}
+              >
+                添加
+              </button>
+            </div>
+            {tagLoading ? (
+              <div className="tag-hint">标签加载中...</div>
+            ) : filteredTagOptions.length > 0 ? (
+              <div className="tag-suggestions">
+                {filteredTagOptions.slice(0, 8).map((tag) => (
+                  <div className="tag-suggestion-item" key={tag.id ?? tag.name}>
+                    <button
+                      type="button"
+                      className="tag suggestion"
+                      onClick={() => addTag(tag.name)}
+                    >
+                      {tag.name}
+                      {Number.isFinite(tag.count) && (
+                        <span className="tag-count">{tag.count}</span>
+                      )}
+                    </button>
+                    {Number.isFinite(tag.id) && (
+                      <button
+                        type="button"
+                        className="tag-delete"
+                        title="删除标签"
+                        onClick={() => requestDeleteTag(tag)}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="tag-hint">暂无可用标签</div>
+            )}
+            {Array.isArray(store.tags) && store.tags.length > 0 ? (
+              <div className="tag-list">
+                {store.tags.map((tag) => (
+                  <button
+                    type="button"
+                    key={tag}
+                    className="tag tag-removable"
+                    onClick={() => removeTag(tag)}
+                    title="点击移除"
+                  >
+                    {tag}
+                    <span className="tag-remove">×</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="tag-empty">还没有添加标签</div>
+            )}
           </div>
-          <HexMatcher 
-            colors={colors}
-            onSelectColor={handleSelectColor}
-          />
+        </div>
+
+        <div className="palette-divider" />
+
+        <div className="palette-section">
+          <button
+            type="button"
+            className="palette-section-header collapsible-header"
+            onClick={() => setIsHexOpen(!isHexOpen)}
+          >
+            <h3>HEX 颜色匹配</h3>
+            <ChevronDown
+              size={18}
+              style={{
+                transform: isHexOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+                color: 'var(--color-text-secondary)',
+              }}
+            />
+          </button>
+          <div style={{ display: isHexOpen ? 'block' : 'none' }}>
+            <HexMatcher 
+              colors={colors}
+              onSelectColor={handleSelectColor}
+            />
+          </div>
         </div>
 
         <div className="palette-divider" />
@@ -388,10 +595,10 @@ function PatternEditPage() {
         <div className="palette-divider" />
 
         <div className="palette-section palette-section-usage">
-          <div 
-            className="palette-section-header" 
+          <button
+            type="button"
+            className="palette-section-header collapsible-header"
             onClick={() => setIsUsageStatsOpen(!isUsageStatsOpen)}
-            style={{ cursor: 'pointer' }}
           >
             <h3>用量统计</h3>
              <ChevronDown 
@@ -402,7 +609,7 @@ function PatternEditPage() {
                 color: 'var(--color-text-secondary)'
               }} 
             />
-          </div>
+          </button>
           <div style={{ display: isUsageStatsOpen ? 'block' : 'none' }}>
             <UsageStats
               pixels={store.pixels}
@@ -438,11 +645,32 @@ function PatternEditPage() {
         loading={false}
         onConfirm={() => {
           setShowLeaveDialog(false);
-          leaveBlocker.proceed();
+          const action = pendingLeaveAction.current;
+          pendingLeaveAction.current = null;
+          action?.();
         }}
         onCancel={() => {
           setShowLeaveDialog(false);
-          leaveBlocker.reset();
+          pendingLeaveAction.current = null;
+        }}
+      />
+
+      <ConfirmDialog
+        open={showTagDeleteDialog}
+        title="删除标签？"
+        description={
+          tagToDelete
+            ? `确定要删除标签「${tagToDelete.name}」吗？已关联图纸将解除关联。`
+            : '确定要删除该标签吗？已关联图纸将解除关联。'
+        }
+        confirmText="删除"
+        cancelText="取消"
+        danger={true}
+        loading={false}
+        onConfirm={confirmDeleteTag}
+        onCancel={() => {
+          setShowTagDeleteDialog(false);
+          setTagToDelete(null);
         }}
       />
 
@@ -621,6 +849,19 @@ function PatternEditPage() {
           justify-content: space-between;
         }
 
+        .collapsible-header {
+          width: 100%;
+          background: transparent;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .collapsible-header:hover h3 {
+          color: var(--color-text);
+        }
+
         .palette-section-header h3 {
           font-size: 0.875rem;
           font-weight: 700;
@@ -628,6 +869,104 @@ function PatternEditPage() {
           letter-spacing: 0.05em;
           color: var(--color-text-secondary);
           margin: 0;
+        }
+
+        .palette-section-tags .tag-editor {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .tag-input-row {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .tag-input.glass-input {
+          flex: 1;
+          min-width: 0;
+          padding: 0.45rem 0.75rem;
+          font-size: 0.85rem;
+        }
+
+        .tag-suggestions,
+        .tag-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .tag-suggestion-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+        }
+
+        .tag-hint,
+        .tag-empty {
+          font-size: 0.75rem;
+          color: var(--color-text-muted);
+        }
+
+        .tag {
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.2);
+          color: var(--color-primary-hover);
+          padding: 0.35rem 0.7rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          transition: all 0.2s ease;
+        }
+
+        .tag:hover {
+          background: rgba(99, 102, 241, 0.16);
+          border-color: rgba(99, 102, 241, 0.35);
+        }
+
+        .tag-removable {
+          cursor: pointer;
+        }
+
+        .tag-remove {
+          font-size: 0.8rem;
+          opacity: 0.6;
+        }
+
+        .suggestion {
+          cursor: pointer;
+        }
+
+        .tag-count {
+          font-size: 0.7rem;
+          opacity: 0.7;
+          background: rgba(0, 0, 0, 0.1);
+          padding: 0.05rem 0.35rem;
+          border-radius: 999px;
+        }
+
+        .tag-delete {
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.08);
+          font-size: 0.9rem;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .tag-delete:hover {
+          background: rgba(239, 68, 68, 0.16);
+          border-color: rgba(239, 68, 68, 0.5);
         }
 
         .palette-divider {
@@ -750,7 +1089,7 @@ function PatternEditPage() {
             top: auto;
             width: 100%;
             max-width: none;
-            height: min(70vh, calc(100vh - 72px - 1rem));
+            height: min(82vh, calc(100vh - 56px));
             border-radius: 20px 20px 0 0;
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             transform: translateY(100%);
@@ -792,7 +1131,20 @@ function PatternEditPage() {
           .palette-section-colors {
             overflow: auto;
             flex: 1;
-            min-height: 200px;
+            min-height: 260px;
+          }
+
+          .palette-section-tags {
+            padding-bottom: 0.5rem;
+          }
+
+          .palette-section-tags .tag-editor {
+            gap: 0.5rem;
+          }
+
+          .palette-section-tags .tag-suggestions,
+          .palette-section-tags .tag-list {
+            gap: 0.35rem;
           }
           
           /* Adjust Toast position so it's not behind toolbar/keyboard */

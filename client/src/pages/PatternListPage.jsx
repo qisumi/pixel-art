@@ -6,7 +6,7 @@ import PatternThumbnail from '../components/PatternThumbnail/index.js';
 import { useToast } from '../hooks/useToast.js';
 import Toast from '../components/Toast/index.js';
 
-function PatternCard({ pattern }) {
+function PatternCard({ pattern, onTagClick }) {
   return (
     <Link to={`/view/${pattern.id}`} className="glass-panel pattern-card">
       <div className="pattern-card-preview">
@@ -36,7 +36,18 @@ function PatternCard({ pattern }) {
         {pattern.tags.length > 0 && (
           <div className="tags">
             {pattern.tags.map(tag => (
-              <span key={tag} className="tag">{tag}</span>
+              <button
+                type="button"
+                key={tag}
+                className="tag tag-button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onTagClick?.(tag);
+                }}
+              >
+                {tag}
+              </button>
             ))}
           </div>
         )}
@@ -102,7 +113,7 @@ function PatternListPage() {
 
   function handleTagFilter(tagName) {
     const newParams = new URLSearchParams(searchParams);
-    if (tagName === activeTag) {
+    if (!tagName || tagName === activeTag) {
       newParams.delete('tag');
     } else {
       newParams.set('tag', tagName);
@@ -143,18 +154,24 @@ function PatternListPage() {
             <button type="submit" className="btn btn-primary">搜索</button>
           </form>
 
-          {tags.length > 0 && (
-            <div className="tag-filter-wrapper">
-              <div className="tag-filter-label">
-                <Tag size={14} />
-                <span>Filter by:</span>
-              </div>
-              <div className="tags">
-                {tags.map(tag => (
+            {tags.length > 0 && (
+              <div className="tag-filter-wrapper">
+                <div className="tag-filter-label">
+                  <Tag size={14} />
+                  <span>Filter by:</span>
+                </div>
+                <div className="tags">
                   <button
-                    key={tag.id}
-                    className={`tag ${activeTag === tag.name ? 'active' : ''}`}
-                    onClick={() => handleTagFilter(tag.name)}
+                    className={`tag ${!activeTag ? 'active' : ''}`}
+                    onClick={() => handleTagFilter('')}
+                  >
+                    全部
+                  </button>
+                  {tags.map(tag => (
+                    <button
+                      key={tag.id}
+                      className={`tag ${activeTag === tag.name ? 'active' : ''}`}
+                      onClick={() => handleTagFilter(tag.name)}
                   >
                     {tag.name}
                     <span className="tag-count">{tag.count}</span>
@@ -183,10 +200,14 @@ function PatternListPage() {
         ) : (
           <>
             <div className="grid grid-cards">
-              {patterns.map(pattern => (
-                <PatternCard key={pattern.id} pattern={pattern} />
-              ))}
-            </div>
+                {patterns.map(pattern => (
+                  <PatternCard
+                    key={pattern.id}
+                    pattern={pattern}
+                    onTagClick={handleTagFilter}
+                  />
+                ))}
+              </div>
 
             {pagination.totalPages > 1 && (
               <div className="pagination">
@@ -351,6 +372,14 @@ function PatternListPage() {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+        }
+
+        .tag-button {
+          cursor: pointer;
+        }
+
+        .tag-button:focus {
+          outline: none;
         }
 
         .tag:hover {
