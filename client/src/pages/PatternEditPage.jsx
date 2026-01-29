@@ -1,26 +1,43 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw } from 'lucide-react';
+import { useParams, useNavigate, Link, useBeforeUnload, unstable_usePrompt } from 'react-router-dom';
+import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2 } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
+import { useToast } from '../hooks/useToast.js';
 import { PixelGrid } from '../components/PixelGrid/index.js';
 import { HexMatcher } from '../components/HexMatcher/index.js';
 import { ColorPicker } from '../components/ColorPicker/index.js';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp/index.js';
+import Toast from '../components/Toast/index.js';
+import ConfirmDialog from '../components/ConfirmDialog/index.js';
 
 function PatternEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(!!id);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [colors, setColors] = useState([]);
   const initialFitDone = useRef(false);
+  const { toast, showToast, clearToast } = useToast();
 
   const store = useEditorStore();
 
   // 启用键盘快捷键
   useKeyboardShortcuts({ onSave: handleSave });
+
+  const shouldBlockLeave = store.isDirty && !saving && !deleting;
+  useBeforeUnload((event) => {
+    if (!shouldBlockLeave) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+  unstable_usePrompt({
+    when: shouldBlockLeave,
+    message: '编辑内容未保存，确定要离开吗？',
+  });
 
   useEffect(() => {
     loadColors();
@@ -51,6 +68,7 @@ function PatternEditPage() {
       setColors(result);
     } catch (err) {
       console.error('Failed to load colors:', err);
+      showToast('颜色数据加载失败', { type: 'error' });
     }
   }
 
@@ -60,6 +78,7 @@ function PatternEditPage() {
       store.loadPattern(pattern);
     } catch (err) {
       console.error('Failed to load pattern:', err);
+      showToast('图纸加载失败', { type: 'error' });
       navigate('/');
     } finally {
       setLoading(false);
@@ -68,7 +87,7 @@ function PatternEditPage() {
 
   async function handleSave() {
     if (!store.name.trim()) {
-      alert('请输入图纸名称');
+      showToast('请输入图纸名称', { type: 'warning' });
       return;
     }
 
@@ -82,10 +101,27 @@ function PatternEditPage() {
         navigate(`/edit/${result.id}`, { replace: true });
       }
       store.markClean();
+      showToast('保存成功', { type: 'success' });
     } catch (err) {
-      alert('保存失败: ' + err.message);
+      showToast(`保存失败: ${err.message}`, { type: 'error' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!store.patternId) return;
+    setDeleting(true);
+    try {
+      await api.patterns.delete(store.patternId);
+      store.initNew();
+      showToast('删除成功', { type: 'success' });
+      navigate('/', { replace: true });
+    } catch (err) {
+      showToast(`删除失败: ${err.message}`, { type: 'error' });
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
     }
   }
 
@@ -179,6 +215,16 @@ function PatternEditPage() {
         </div>
         <div className="editor-header-right">
           <KeyboardShortcutsHelp />
+          {store.patternId && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={saving || deleting}
+            >
+              <Trash2 size={18} />
+              删除
+            </button>
+          )}
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <Save size={18} />
             {saving ? 'Saving...' : 'Save Pattern'}
@@ -285,6 +331,22 @@ function PatternEditPage() {
           />
         </div>
       </footer>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="确认删除图纸？"
+        description={store.isDirty ? '未保存的修改将会丢失。此操作不可恢复。' : '此操作不可恢复。'}
+        confirmText="删除"
+        cancelText="取消"
+        danger={true}
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      <div className="toast-container">
+        <Toast toast={toast} onClose={clearToast} />
+      </div>
 
       <style>{`
         .editor-page {

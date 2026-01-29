@@ -1,6 +1,6 @@
 # Pixel Art Editor - Development Roadmap
 
-> 剩余工作清单及分步实施指南 (更新于 2026-01-28)
+> 剩余工作清单及分步实施指南 (更新于 2026-01-29)
 
 ---
 
@@ -32,20 +32,20 @@
 | **自动适配视图** | ✅ 完成 | 初始加载时 fitToScreen |
 | **HEX 颜色匹配 UI** | ✅ 完成 | HexMatcher 组件 + 改进的 ColorPicker |
 | **键盘快捷键** | ✅ 完成 | Ctrl+Z/S, B/E/G 工具切换, +/- 缩放 |
+| **离开确认提示** | ✅ 完成 | isDirty 检测 + beforeunload |
+| **错误提示优化** | ✅ 完成 | Toast/Snackbar 组件替代 alert |
+| **删除确认对话框** | ✅ 完成 | 删除图纸前二次确认 |
+| **图纸卡片缩略图** | ✅ 完成 | 列表页显示预览图 |
 
 ### ⏳ 待完成模块 (MVP)
 
 | 模块 | 优先级 | 估时 | 说明 |
 |------|--------|------|------|
-| **图纸卡片缩略图** | P1 | 2-3h | 列表页显示预览图 |
-| **离开确认提示** | P1 | 0.5h | isDirty 检测 + beforeunload |
 
 ### 🔮 后续增强 (Post-MVP)
 
 | 模块 | 优先级 | 估时 | 说明 |
 |------|--------|------|------|
-| **错误提示优化** | P2 | 1h | Toast/Snackbar 组件替代 alert |
-| **删除确认对话框** | P2 | 0.5h | 删除图纸前二次确认 |
 | **移动端工具栏适配** | P2 | 1.5h | 响应式布局优化 |
 | **图纸导出功能** | P3 | 3h | 导出为 PNG/PDF |
 | **用量统计** | P3 | 2h | 统计每种颜色珠子数量 |
@@ -123,7 +123,7 @@ function PatternThumbnail({ width, height, pixels, palette, size = 120 }) {
 
 ---
 
-## 阶段 3: 离开确认提示 (P1)
+## 阶段 3: 离开确认提示 (已完成)
 
 ### 3.1 实现 beforeunload 检测
 
@@ -131,7 +131,7 @@ function PatternThumbnail({ width, height, pixels, palette, size = 120 }) {
 // PatternEditPage.jsx
 useEffect(() => {
   function handleBeforeUnload(e) {
-    3f (store.isDirty) {
+    if (store.isDirty) {
       e.preventDefault();
       e.returnValue = '';
     }
@@ -143,9 +143,9 @@ useEffect(() => {
 
 ### 3.2 验收标准
 
-- [ ] 编辑未保存时离开页面有提示
-- [ ] 保存后 isDirty 重置
-- [ ] 路由跳转也触发确认
+- [x] 编辑未保存时离开页面有提示
+- [x] 保存后 isDirty 重置
+- [x] 路由跳转也触发确认
 
 ---
 

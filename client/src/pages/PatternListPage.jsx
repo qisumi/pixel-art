@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Grid3X3, Tag, Sparkles } from 'lucide-react';
 import api from '../utils/api.js';
 import PatternThumbnail from '../components/PatternThumbnail/index.js';
+import { useToast } from '../hooks/useToast.js';
+import Toast from '../components/Toast/index.js';
 
 function PatternCard({ pattern }) {
   return (
@@ -51,6 +53,7 @@ function PatternListPage() {
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
   const activeTag = searchParams.get('tag') || '';
+  const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
     loadPatterns();
@@ -69,6 +72,7 @@ function PatternListPage() {
       setPagination(result.pagination);
     } catch (err) {
       console.error('Failed to load patterns:', err);
+      showToast('图纸加载失败', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -80,6 +84,7 @@ function PatternListPage() {
       setTags(result);
     } catch (err) {
       console.error('Failed to load tags:', err);
+      showToast('标签加载失败', { type: 'error' });
     }
   }
 
@@ -214,6 +219,10 @@ function PatternListPage() {
             )}
           </>
         )}
+      </div>
+
+      <div className="toast-container">
+        <Toast toast={toast} onClose={clearToast} />
       </div>
 
       <style>{`
