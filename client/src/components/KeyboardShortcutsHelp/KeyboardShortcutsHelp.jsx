@@ -21,7 +21,6 @@ export function KeyboardShortcutsHelp() {
       items: [
         { keys: ['B'], description: '画笔工具' },
         { keys: ['E'], description: '橡皮擦' },
-        { keys: ['G'], description: '填充工具' },
       ]
     },
     {
@@ -31,6 +30,15 @@ export function KeyboardShortcutsHelp() {
         { keys: ['='], description: '放大（替代）' },
         { keys: ['-'], description: '缩小' },
         { keys: ['0'], description: '自动适配视图' },
+      ]
+    },
+    {
+      category: '变换',
+      items: [
+        { keys: ['Shift', '↑'], description: '图像上移 1 像素' },
+        { keys: ['Shift', '↓'], description: '图像下移 1 像素' },
+        { keys: ['Shift', '←'], description: '图像左移 1 像素' },
+        { keys: ['Shift', '→'], description: '图像右移 1 像素' },
       ]
     },
     {

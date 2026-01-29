@@ -46,11 +46,28 @@ export function useKeyboardShortcuts({ onSave }) {
         return;
       }
       
-      // G: 填充
-      if (e.key === 'g' || e.key === 'G') {
-        e.preventDefault();
-        store.setTool('fill');
-        return;
+      // Shift + Arrow: 平移图像
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          store.shiftCanvas(0, -1);
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          store.shiftCanvas(0, 1);
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          store.shiftCanvas(-1, 0);
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          store.shiftCanvas(1, 0);
+          return;
+        }
       }
       
       // +/=: 放大

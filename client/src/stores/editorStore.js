@@ -227,6 +227,26 @@ export const useEditorStore = create((set, get) => ({
     set({ pixels: newPixels, isDirty: true });
   },
 
+  shiftCanvas: (dx, dy) => {
+    if (!Number.isInteger(dx) || !Number.isInteger(dy)) return;
+    if (dx === 0 && dy === 0) return;
+
+    const { width, height, pixels } = get();
+    get().pushHistory();
+
+    const nextPixels = createEmptyPixels(width, height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const srcX = x - dx;
+        const srcY = y - dy;
+        if (srcX < 0 || srcX >= width || srcY < 0 || srcY >= height) continue;
+        nextPixels[y * width + x] = pixels[srcY * width + srcX];
+      }
+    }
+
+    set({ pixels: nextPixels, isDirty: true });
+  },
+
   undo: () => {
     const { history, historyIndex, pixels } = get();
     if (historyIndex < 0) return;
