@@ -376,6 +376,9 @@ function PixelGrid({
   const handleStageMouseDown = useCallback((e) => {
     const stage = e.target.getStage();
     if (!stage) return;
+    if (e.evt.button === 2) {
+      e.evt.preventDefault();
+    }
 
     const gridPos = () => {
       const pointer = stage.getPointerPosition();
@@ -459,7 +462,10 @@ function PixelGrid({
     }
   }, [isPanning, isDrawing, readonly, onPixelDrag, lastPointerPos, stagePosition, lastPos, width, height, scale, applyPanUpdate]);
 
-  const handleStageMouseUp = useCallback(() => {
+  const handleStageMouseUp = useCallback((e) => {
+    if (e?.evt?.button === 2) {
+      e.evt.preventDefault();
+    }
     if (isPanning) {
       setIsPanning(false);
       setLastPointerPos(null);
@@ -693,6 +699,7 @@ function PixelGrid({
     <div
       ref={containerRef}
       className="pixel-grid-container"
+      onContextMenu={(e) => e.preventDefault()}
       style={{
         // If ancestors temporarily report 0x0 (common during initial route/layout),
         // we used to fall back to explicit pixel size, but locking width/height prevents
