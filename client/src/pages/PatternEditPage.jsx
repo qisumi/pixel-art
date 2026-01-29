@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link, useBeforeUnload, unstable_usePrompt } from 'react-router-dom';
+import { useParams, useNavigate, Link, useBeforeUnload, useBlocker } from 'react-router-dom';
 import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
@@ -21,6 +21,7 @@ function PatternEditPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showImportExportDialog, setShowImportExportDialog] = useState(false);
   const [colors, setColors] = useState([]);
   const [highlightCode, setHighlightCode] = useState(null);
@@ -47,10 +48,20 @@ function PatternEditPage() {
     event.preventDefault();
     event.returnValue = '';
   });
-  unstable_usePrompt({
-    when: shouldBlockLeave,
-    message: '编辑内容未保存，确定要离开吗？',
-  });
+  const leaveBlocker = useBlocker(shouldBlockLeave);
+  useEffect(() => {
+    if (leaveBlocker.state === 'blocked') {
+      setShowLeaveDialog(true);
+      return;
+    }
+    setShowLeaveDialog(false);
+  }, [leaveBlocker.state]);
+
+  useEffect(() => {
+    if (!shouldBlockLeave && leaveBlocker.state === 'blocked') {
+      leaveBlocker.reset();
+    }
+  }, [shouldBlockLeave, leaveBlocker]);
 
   useEffect(() => {
     loadColors();
@@ -415,6 +426,24 @@ function PatternEditPage() {
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      <ConfirmDialog
+        open={showLeaveDialog}
+        title="离开编辑器？"
+        description="编辑内容未保存，离开将会丢失。此操作不可恢复。"
+        confirmText="离开"
+        cancelText="继续编辑"
+        danger={true}
+        loading={false}
+        onConfirm={() => {
+          setShowLeaveDialog(false);
+          leaveBlocker.proceed();
+        }}
+        onCancel={() => {
+          setShowLeaveDialog(false);
+          leaveBlocker.reset();
+        }}
       />
 
       <PatternImportExportDialog
