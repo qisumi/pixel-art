@@ -108,7 +108,7 @@ export function getPattern(id) {
   return {
     id: pattern.id,
     name: pattern.name,
-    description: pattern.description,
+    description: pattern.description ?? '',
     width: pattern.width,
     height: pattern.height,
     palette: JSON.parse(pattern.palette),

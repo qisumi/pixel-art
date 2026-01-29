@@ -86,8 +86,8 @@ export const useEditorStore = create((set, get) => ({
       : decoded.map((index) => (index === 0 ? 0 : index + 1));
     set({
       patternId: pattern.id,
-      name: pattern.name,
-      description: pattern.description,
+      name: pattern.name ?? '',
+      description: pattern.description ?? '',
       tags: pattern.tags || [],
       width: pattern.width,
       height: pattern.height,
@@ -106,14 +106,67 @@ export const useEditorStore = create((set, get) => ({
   getPatternData: () => {
     const state = get();
     return {
-      name: state.name,
-      description: state.description,
+      name: state.name ?? '',
+      description: state.description ?? '',
       width: state.width,
       height: state.height,
       palette: state.palette,
       data: encode(state.pixels),
-      tags: state.tags,
+      tags: Array.isArray(state.tags) ? state.tags : [],
     };
+  },
+
+  importFromRle: ({ rle, width, height }) => {
+    const state = get();
+    const nextWidth = Number.isFinite(width) ? width : state.width;
+    const nextHeight = Number.isFinite(height) ? height : state.height;
+
+    if (!Number.isInteger(nextWidth) || !Number.isInteger(nextHeight) || nextWidth <= 0 || nextHeight <= 0) {
+      throw new Error('Invalid size');
+    }
+    if (nextWidth > 128 || nextHeight > 128) {
+      throw new Error('Size exceeds maximum (128)');
+    }
+
+    const nextPixels = decode(rle, nextWidth * nextHeight);
+
+    let maxIndex = 0;
+    for (const idx of nextPixels) {
+      if (!Number.isInteger(idx) || idx < 0) {
+        throw new Error(`Invalid palette index: ${idx}`);
+      }
+      if (idx > maxIndex) maxIndex = idx;
+    }
+
+    if (maxIndex >= state.palette.length) {
+      throw new Error(`Palette index out of range: max=${maxIndex}, paletteLength=${state.palette.length}`);
+    }
+
+    const sizeChanged = nextWidth !== state.width || nextHeight !== state.height;
+    if (!sizeChanged) {
+      get().pushHistory();
+    }
+
+    const patch = {
+      width: nextWidth,
+      height: nextHeight,
+      pixels: nextPixels,
+      zoom: 1,
+      panOffset: { x: 0, y: 0 },
+      isDirty: true,
+      isDrawing: false,
+      currentColorIndex:
+        state.currentColorIndex < state.palette.length
+          ? state.currentColorIndex
+          : (state.palette.length > 1 ? 1 : 0),
+    };
+
+    if (sizeChanged) {
+      patch.history = [];
+      patch.historyIndex = -1;
+    }
+
+    set(patch);
   },
 
   pushHistory: () => {

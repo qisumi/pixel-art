@@ -4,9 +4,19 @@ import { z } from 'zod';
 
 const router = Router();
 
+const descriptionSchema = z.preprocess(
+  (value) => (value === null || value === undefined ? '' : value),
+  z.string().max(500)
+);
+
+const optionalDescriptionSchema = z.preprocess(
+  (value) => (value === null ? '' : value),
+  z.string().max(500).optional()
+);
+
 const createPatternSchema = z.object({
   name: z.string().min(1).max(100),
-  description: z.string().max(500).optional().default(''),
+  description: descriptionSchema,
   width: z.number().int().min(1).max(128),
   height: z.number().int().min(1).max(128),
   palette: z.array(z.string().nullable()).min(1),
@@ -14,7 +24,9 @@ const createPatternSchema = z.object({
   tags: z.array(z.string().min(1).max(30)).optional().default([]),
 });
 
-const updatePatternSchema = createPatternSchema.partial();
+const updatePatternSchema = createPatternSchema
+  .partial()
+  .extend({ description: optionalDescriptionSchema });
 
 const listQuerySchema = z.object({
   keyword: z.string().optional(),
@@ -107,6 +119,7 @@ router.put('/:id', (req, res) => {
       error: {
         code: 'VALIDATION_ERROR',
         message: parseResult.error.errors[0].message,
+        details: parseResult.error.errors,
       },
     });
   }

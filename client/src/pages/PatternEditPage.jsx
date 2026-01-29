@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useBeforeUnload, unstable_usePrompt } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
@@ -10,6 +10,7 @@ import { HexMatcher } from '../components/HexMatcher/index.js';
 import { ColorPicker } from '../components/ColorPicker/index.js';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp/index.js';
 import { UsageStats } from '../components/UsageStats/index.js';
+import { PatternImportExportDialog } from '../components/PatternImportExportDialog/index.js';
 import Toast from '../components/Toast/index.js';
 import ConfirmDialog from '../components/ConfirmDialog/index.js';
 
@@ -20,6 +21,7 @@ function PatternEditPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showImportExportDialog, setShowImportExportDialog] = useState(false);
   const [colors, setColors] = useState([]);
   const [highlightCode, setHighlightCode] = useState(null);
   const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
@@ -233,6 +235,15 @@ function PatternEditPage() {
           <div className="hide-on-mobile">
             <KeyboardShortcutsHelp />
           </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowImportExportDialog(true)}
+            disabled={saving || deleting}
+            title="导入/导出"
+          >
+            <Upload size={18} />
+            <span>导入/导出</span>
+          </button>
           {store.patternId && (
             <button
               className="btn btn-secondary"
@@ -403,6 +414,17 @@ function PatternEditPage() {
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      <PatternImportExportDialog
+        open={showImportExportDialog}
+        store={store}
+        showToast={showToast}
+        onImported={() => {
+          initialFitDone.current = false;
+          setTimeout(() => store.fitToScreen(), 50);
+        }}
+        onClose={() => setShowImportExportDialog(false)}
       />
 
       <div className="toast-container">
