@@ -132,6 +132,7 @@ function PatternViewPage() {
             palette={pattern.palette}
             zoom={zoom}
             panOffset={panOffset}
+            touchPanMode="single"
             showGrid={showGrid}
             showCodes={true}
             showCodesMinZoom={0.6}

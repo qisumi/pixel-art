@@ -201,6 +201,7 @@ function PatternEditPage() {
           palette={store.palette}
           zoom={store.zoom}
           panOffset={store.panOffset}
+          touchPanMode="double"
           showGrid={store.showGrid}
           showCodes={true}
           showCodesMinZoom={0.6}

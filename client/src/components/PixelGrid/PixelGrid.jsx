@@ -27,6 +27,7 @@ function PixelGrid({
   palette,
   zoom = 1,
   panOffset = { x: 0, y: 0 },
+  touchPanMode = 'double',
   showGrid = true,
   showCodes = false,
   showCodesMinZoom = 0.6,
@@ -77,6 +78,8 @@ function PixelGrid({
   const isWheelZoomingRef = useRef(false);
   const wheelEndTimeoutRef = useRef(null);
   const hasUserPannedRef = useRef(false);
+  const pinchRef = useRef(null);
+  const allowSingleFingerPan = touchPanMode === 'single';
   const resolvedContainerSize = useMemo(() => {
     const safeWidth = Number.isFinite(containerSize.width) ? Math.round(containerSize.width) : 0;
     const safeHeight = Number.isFinite(containerSize.height) ? Math.round(containerSize.height) : 0;
@@ -470,9 +473,9 @@ function PixelGrid({
   }, [isPanning, isDrawing, onDrawEnd]);
 
   const handleTouchStart = useCallback((e) => {
-    if (readonly) return;
     const stage = e.target.getStage();
     if (!stage) return;
+    e.evt.preventDefault();
 
     const gridPos = () => {
       const pointer = stage.getPointerPosition();
@@ -492,14 +495,32 @@ function PixelGrid({
       activeEraserRef.current = false;
       const touch1 = e.evt.touches[0];
       const touch2 = e.evt.touches[1];
-      setLastPointerPos({
+      const center = {
         x: (touch1.clientX + touch2.clientX) / 2,
         y: (touch1.clientY + touch2.clientY) / 2,
-      });
+      };
+      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+      setLastPointerPos(center);
+      pinchRef.current = {
+        center,
+        distance: distance || 1,
+        scale: scaleRef.current,
+        pan: panRef.current,
+      };
       return;
     }
 
     if (e.evt.touches.length === 1) {
+      if (allowSingleFingerPan) {
+        hasUserPannedRef.current = true;
+        setIsPanning(true);
+        setIsDrawing(false);
+        activeEraserRef.current = false;
+        const touch = e.evt.touches[0];
+        setLastPointerPos({ x: touch.clientX, y: touch.clientY });
+        return;
+      }
+      if (readonly) return;
       const pos = gridPos();
       if (pos && onPixelClick) {
         if (onDrawStart) onDrawStart();
@@ -510,29 +531,68 @@ function PixelGrid({
         setLastPos(pos);
       }
     }
-  }, [readonly, onPixelClick, onDrawStart, stagePosition, scale, width, height, currentTool]);
+  }, [readonly, onPixelClick, onDrawStart, stagePosition, scale, width, height, currentTool, allowSingleFingerPan]);
 
   const handleTouchMove = useCallback((e) => {
     const stage = e.target.getStage();
     if (!stage) return;
+    e.evt.preventDefault();
 
-    if (isPanning && lastPointerPos && e.evt.touches.length === 2) {
+    if (isPanning && e.evt.touches.length === 2) {
       const touch1 = e.evt.touches[0];
       const touch2 = e.evt.touches[1];
       const centerX = (touch1.clientX + touch2.clientX) / 2;
       const centerY = (touch1.clientY + touch2.clientY) / 2;
+      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY) || 1;
+      const prevPinch = pinchRef.current;
+      if (prevPinch) {
+        const scaleRatio = distance / prevPinch.distance;
+        const nextScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prevPinch.scale * scaleRatio));
+        const ratio = nextScale / prevPinch.scale;
+        const anchorPan = {
+          x: prevPinch.center.x - (prevPinch.center.x - prevPinch.pan.x) * ratio,
+          y: prevPinch.center.y - (prevPinch.center.y - prevPinch.pan.y) * ratio,
+        };
+        const newPos = {
+          x: anchorPan.x + (centerX - prevPinch.center.x),
+          y: anchorPan.y + (centerY - prevPinch.center.y),
+        };
 
-      const dx = centerX - lastPointerPos.x;
-      const dy = centerY - lastPointerPos.y;
+        scaleRef.current = nextScale;
+        setScale(nextScale);
+        applyPanUpdate(newPos);
+        onZoom?.(nextScale);
 
+        pinchRef.current = {
+          center: { x: centerX, y: centerY },
+          distance,
+          scale: nextScale,
+          pan: newPos,
+        };
+      } else if (lastPointerPos) {
+        const dx = centerX - lastPointerPos.x;
+        const dy = centerY - lastPointerPos.y;
+        const newPos = {
+          x: stagePosition.x + dx,
+          y: stagePosition.y + dy,
+        };
+        applyPanUpdate(newPos);
+        setLastPointerPos({ x: centerX, y: centerY });
+      }
+
+      return;
+    }
+
+    if (allowSingleFingerPan && isPanning && lastPointerPos && e.evt.touches.length === 1) {
+      const touch = e.evt.touches[0];
+      const dx = touch.clientX - lastPointerPos.x;
+      const dy = touch.clientY - lastPointerPos.y;
       const newPos = {
         x: stagePosition.x + dx,
         y: stagePosition.y + dy,
       };
-
       applyPanUpdate(newPos);
-      setLastPointerPos({ x: centerX, y: centerY });
-
+      setLastPointerPos({ x: touch.clientX, y: touch.clientY });
       return;
     }
 
@@ -550,10 +610,23 @@ function PixelGrid({
         }
       }
     }
-  }, [isPanning, isDrawing, readonly, onPixelDrag, lastPointerPos, stagePosition, lastPos, width, height, scale, applyPanUpdate]);
+  }, [isPanning, isDrawing, readonly, onPixelDrag, lastPointerPos, stagePosition, lastPos, width, height, scale, applyPanUpdate, allowSingleFingerPan, onZoom]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (isPanning) {
+  const handleTouchEnd = useCallback((e) => {
+    const remainingTouches = e?.evt?.touches?.length ?? 0;
+    if (remainingTouches < 2) {
+      pinchRef.current = null;
+    }
+    if (remainingTouches === 1) {
+      if (allowSingleFingerPan) {
+        const touch = e.evt.touches[0];
+        setIsPanning(true);
+        setLastPointerPos({ x: touch.clientX, y: touch.clientY });
+      } else {
+        setIsPanning(false);
+        setLastPointerPos(null);
+      }
+    } else if (remainingTouches === 0) {
       setIsPanning(false);
       setLastPointerPos(null);
     }
@@ -563,7 +636,7 @@ function PixelGrid({
     setIsDrawing(false);
     activeEraserRef.current = false;
     setLastPos(null);
-  }, [isPanning, isDrawing, onDrawEnd]);
+  }, [isDrawing, onDrawEnd, allowSingleFingerPan]);
 
   const handleWheel = useCallback((e) => {
     e.evt.preventDefault();
@@ -635,6 +708,7 @@ function PixelGrid({
         overflow: 'hidden',
         cursor: isPanning ? 'grabbing' : (readonly ? 'default' : 'crosshair'),
         background: 'var(--color-bg)',
+        touchAction: 'none',
       }}
     >
       <style>{`
