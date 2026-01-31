@@ -22,14 +22,17 @@ export function KeyboardShortcutsHelp() {
         { keys: ['B'], description: '画笔工具' },
         { keys: ['E'], description: '橡皮擦' },
         { keys: ['F'], description: '填充工具（油漆桶）' },
+        { keys: ['H'], description: '手指工具（拖动画布）' },
       ]
     },
     {
       category: '模式',
       items: [
         { keys: ['L'], description: '切换锁定/解锁模式' },
+        { keys: ['H'], description: '切换手指工具（拖动画布）' },
         { keys: ['🔒', '锁定'], description: '锁定模式：只能在空白格子上色' },
         { keys: ['🔓', '解锁'], description: '普通模式：可在任意格子上色' },
+        { keys: ['👆', '手指'], description: '手指工具：单指拖动平移画布' },
       ]
     },
     {
@@ -53,8 +56,10 @@ export function KeyboardShortcutsHelp() {
     {
       category: '导航',
       items: [
-        { keys: ['Alt', '拖拽'], description: '平移画布' },
-        { keys: ['中键', '拖拽'], description: '平移画布（替代）' },
+        { keys: ['Alt', '拖拽'], description: '平移画布（桌面）' },
+        { keys: ['中键', '拖拽'], description: '平移画布（桌面替代）' },
+        { keys: ['双指', '拖动'], description: '平移画布（移动端）' },
+        { keys: ['手指工具', '单指'], description: '单指拖动平移（移动端）' },
         { keys: ['Ctrl', '滚轮'], description: '缩放' },
       ]
     }

@@ -48,10 +48,11 @@ export const useEditorStore = create((set, get) => ({
   panOffset: { x: 0, y: 0 },
   showGrid: true,
   lockMode: true, // 锁定模式：只能在未上色格子上色，默认开启
-  
+  handTool: false, // 手指工具：启用后单指拖动是拽动画布而不是绘制
+
   history: [],
   historyIndex: -1,
-  
+
   isDirty: false,
   isDrawing: false,
 
@@ -71,6 +72,8 @@ export const useEditorStore = create((set, get) => ({
       panOffset: { x: 0, y: 0 },
       showGrid: true,
       lockMode: true,
+      handTool: false,
+      previousTool: 'brush',
       history: [],
       historyIndex: -1,
       isDirty: false,
@@ -99,6 +102,8 @@ export const useEditorStore = create((set, get) => ({
       zoom: 1,
       panOffset: { x: 0, y: 0 },
       lockMode: true,
+      handTool: false,
+      previousTool: 'brush',
       history: [],
       historyIndex: -1,
       isDirty: false,
@@ -288,21 +293,24 @@ export const useEditorStore = create((set, get) => ({
     });
   },
 
-  setTool: (tool) => set({ currentTool: tool }),
+  setTool: (tool) => set((state) => ({
+    currentTool: tool,
+    handTool: false, // 设置任何工具时自动关闭手指工具
+  })),
   
-  setCurrentColor: (index) => set({ currentColorIndex: index, currentTool: 'brush' }),
+  setCurrentColor: (index) => set({ currentColorIndex: index, currentTool: 'brush', handTool: false }),
   
   addColorToPalette: (mardCode) => {
     const { palette } = get();
     const existingIndex = palette.indexOf(mardCode);
     if (existingIndex !== -1) {
-      set({ currentColorIndex: existingIndex });
+      set({ currentColorIndex: existingIndex, handTool: false });
       return existingIndex;
     }
-    
+
     const newPalette = [...palette, mardCode];
     const newIndex = newPalette.length - 1;
-    set({ palette: newPalette, currentColorIndex: newIndex, isDirty: true });
+    set({ palette: newPalette, currentColorIndex: newIndex, isDirty: true, handTool: false });
     return newIndex;
   },
 
@@ -313,6 +321,16 @@ export const useEditorStore = create((set, get) => ({
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
   toggleLockMode: () => set((state) => ({ lockMode: !state.lockMode })),
+
+  toggleHandTool: () => set((state) => {
+    if (!state.handTool) {
+      // 开启手指工具时，保存当前工具状态
+      return { handTool: true, previousTool: state.currentTool };
+    } else {
+      // 关闭手指工具时，恢复之前的工具
+      return { handTool: false, currentTool: state.previousTool || 'brush' };
+    }
+  }),
 
   containerSize: { width: 0, height: 0 },
   

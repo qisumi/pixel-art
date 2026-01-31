@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useBeforeUnload } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload, Lock, Unlock, Hand, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
@@ -34,6 +34,7 @@ function PatternEditPage() {
   const [tagOptions, setTagOptions] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [tagLoading, setTagLoading] = useState(false);
+  const [isMobileToolbarCollapsed, setIsMobileToolbarCollapsed] = useState(false);
   const initialFitDone = useRef(false);
   const { toast, showToast, clearToast } = useToast();
   const pendingLeaveAction = useRef(null);
@@ -307,13 +308,14 @@ function PatternEditPage() {
           palette={store.palette}
           zoom={store.zoom}
           panOffset={store.panOffset}
-          touchPanMode="double"
+          touchPanMode={store.handTool ? 'single' : 'double'}
           showGrid={store.showGrid}
           showCodes={true}
           showCodesMinZoom={0.6}
           highlightCode={highlightCode}
           currentTool={store.currentTool}
           currentColorIndex={store.currentColorIndex}
+          readonly={store.handTool}
           onPixelClick={handlePixelClick}
           onPixelDrag={handlePixelDrag}
           onDrawStart={handleDrawStart}
@@ -407,6 +409,13 @@ function PatternEditPage() {
           >
             {store.lockMode ? <Lock size={20} /> : <Unlock size={20} />}
           </button>
+          <button
+            className={`btn glass-button btn-icon ${store.handTool ? 'active' : ''}`}
+            onClick={() => store.toggleHandTool()}
+            title="手指工具 (H) - 单指拖动画布"
+          >
+            <Hand size={20} />
+          </button>
         </div>
 
         <div className="divider-horizontal"></div>
@@ -472,11 +481,18 @@ function PatternEditPage() {
 
         <div className="tool-group mobile-only-tool">
           <div className="divider-horizontal"></div>
-          <button 
+          <button
              className={`btn glass-button btn-icon ${isMobilePaletteOpen ? 'active' : ''}`}
              onClick={() => setIsMobilePaletteOpen(!isMobilePaletteOpen)}
           >
             <Palette size={20} />
+          </button>
+          <button
+            className="btn glass-button btn-icon mobile-collapse-btn"
+            onClick={() => setIsMobileToolbarCollapsed(!isMobileToolbarCollapsed)}
+            title={isMobileToolbarCollapsed ? "展开工具栏" : "折叠工具栏"}
+          >
+            {isMobileToolbarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
         </div>
       </aside>
@@ -1099,6 +1115,33 @@ function PatternEditPage() {
           .tool-btn svg, .btn-icon svg {
             width: 18px;
             height: 18px;
+          }
+
+          /* Scrollable toolbar for mobile */
+          .editor-toolbar {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+          }
+
+          .editor-toolbar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
+          }
+
+          .editor-toolbar .tool-group {
+            flex-shrink: 0;
+          }
+
+          /* Show collapse button hint on small screens */
+          .mobile-collapse-btn {
+            display: none;
+          }
+
+          @media (max-width: 480px) {
+            .mobile-collapse-btn {
+              display: flex;
+            }
           }
 
           /* Slide-up Palette */

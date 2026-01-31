@@ -60,6 +60,13 @@ export function useKeyboardShortcuts({ onSave }) {
         return;
       }
 
+      // H: 切换手指工具
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        store.toggleHandTool();
+        return;
+      }
+
       // Shift + Arrow: 平移图像
       if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.key === 'ArrowUp') {

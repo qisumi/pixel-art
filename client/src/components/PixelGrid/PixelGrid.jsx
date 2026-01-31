@@ -404,6 +404,15 @@ function PixelGrid({
       return;
     }
 
+    // readonly 模式下，左键拖动平移画布
+    if (readonly && e.evt.button === 0) {
+      hasUserPannedRef.current = true;
+      setIsPanning(true);
+      setLastPointerPos({ x: e.evt.clientX, y: e.evt.clientY });
+      activeEraserRef.current = false;
+      return;
+    }
+
     // 以下绘制操作在 readonly 模式下不执行
     if (readonly) return;
 
@@ -717,7 +726,7 @@ function PixelGrid({
         right: 'auto',
         bottom: 'auto',
         overflow: 'hidden',
-        cursor: isPanning ? 'grabbing' : (readonly ? 'default' : 'crosshair'),
+        cursor: isPanning ? 'grabbing' : (readonly ? 'grab' : 'crosshair'),
         background: 'var(--color-bg)',
         touchAction: 'none',
       }}
