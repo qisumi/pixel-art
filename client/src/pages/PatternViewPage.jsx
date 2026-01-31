@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Maximize2, Grid3X3, ZoomIn, ZoomOut, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Maximize2, Grid3X3, ZoomIn, ZoomOut, ChevronDown, FlipHorizontal } from 'lucide-react';
 import api from '../utils/api.js';
 import { decode } from '../utils/rle.js';
 import { PixelGrid } from '../components/PixelGrid/index.js';
@@ -98,6 +98,20 @@ function PatternViewPage() {
     }
   }, [pattern, fitToScreen]);
 
+  const handleMirrorHorizontal = useCallback(() => {
+    if (!pixels || !pattern) return;
+    const { width, height } = pattern;
+    const mirrored = new Array(pixels.length);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const srcIndex = y * width + x;
+        const destIndex = y * width + (width - 1 - x);
+        mirrored[destIndex] = pixels[srcIndex];
+      }
+    }
+    setPixels(mirrored);
+  }, [pixels, pattern]);
+
   if (loading) {
     return (
       <div className="page">
@@ -171,6 +185,13 @@ function PatternViewPage() {
           title="网格线"
         >
           <Grid3X3 size={20} />
+        </button>
+        <button
+          className="btn glass-button btn-icon"
+          onClick={handleMirrorHorizontal}
+          title="左右镜像"
+        >
+          <FlipHorizontal size={20} />
         </button>
         <div className="divider-vertical"></div>
         <button

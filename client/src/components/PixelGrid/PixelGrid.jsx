@@ -789,22 +789,38 @@ function PixelGrid({
         {showGrid && scale >= 0.25 && (
           <Layer x={stagePosition.x} y={stagePosition.y} listening={false} imageSmoothingEnabled={false}>
             <Group scaleX={scale} scaleY={scale}>
-              {Array.from({ length: width + 1 }).map((_, x) => (
-                <Line
-                  key={`v-${x}`}
-                  points={[x * BASE_PIXEL_SIZE, 0, x * BASE_PIXEL_SIZE, height * BASE_PIXEL_SIZE]}
-                  stroke={GRID_LINE_COLOR}
-                  strokeWidth={1}
-                />
-              ))}
-              {Array.from({ length: height + 1 }).map((_, y) => (
-                <Line
-                  key={`h-${y}`}
-                  points={[0, y * BASE_PIXEL_SIZE, width * BASE_PIXEL_SIZE, y * BASE_PIXEL_SIZE]}
-                  stroke={GRID_LINE_COLOR}
-                  strokeWidth={1}
-                />
-              ))}
+              {Array.from({ length: width + 1 }).map((_, x) => {
+                const isMajorLine = x === 0 || x % 10 === 0;
+                const isMidLine = x % 5 === 0;
+                const stroke = isMajorLine ? 'rgba(0, 0, 0, 0.25)' : (isMidLine ? 'rgba(0, 0, 0, 0.12)' : GRID_LINE_COLOR);
+                const strokeWidth = isMajorLine ? 2 : 1;
+                const dash = isMidLine && !isMajorLine ? [4, 4] : undefined;
+                return (
+                  <Line
+                    key={`v-${x}`}
+                    points={[x * BASE_PIXEL_SIZE, 0, x * BASE_PIXEL_SIZE, height * BASE_PIXEL_SIZE]}
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    dash={dash}
+                  />
+                );
+              })}
+              {Array.from({ length: height + 1 }).map((_, y) => {
+                const isMajorLine = y === 0 || y % 10 === 0;
+                const isMidLine = y % 5 === 0;
+                const stroke = isMajorLine ? 'rgba(0, 0, 0, 0.25)' : (isMidLine ? 'rgba(0, 0, 0, 0.12)' : GRID_LINE_COLOR);
+                const strokeWidth = isMajorLine ? 2 : 1;
+                const dash = isMidLine && !isMajorLine ? [4, 4] : undefined;
+                return (
+                  <Line
+                    key={`h-${y}`}
+                    points={[0, y * BASE_PIXEL_SIZE, width * BASE_PIXEL_SIZE, y * BASE_PIXEL_SIZE]}
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    dash={dash}
+                  />
+                );
+              })}
             </Group>
           </Layer>
         )}
