@@ -18,31 +18,31 @@ function HexMatcher({ onSelectColor, colors = [] }) {
     return color?.hex || '#000000';
   }
 
-  async function handleMatch() {
-    let hex = hexInput.trim();
-    
+  async function handleMatch(hexValue) {
+    let hex = hexValue !== undefined ? hexValue : hexInput.trim();
+
     // Remove # if present
     if (hex.startsWith('#')) {
       hex = hex.slice(1);
     }
-    
+
     // Validate hex format
     if (!/^[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(hex)) {
       setError('请输入有效的 HEX 颜色 (如: ff0000 或 #ff0000)');
       return;
     }
-    
+
     // Expand 3-digit hex to 6-digit
     if (hex.length === 3) {
       hex = hex.split('').map(c => c + c).join('');
     }
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await api.colors.match(hex);
-      
+
       // Get the best match
       setMatchResult(result.match || null);
       setAlternatives(Array.isArray(result.alternatives) ? result.alternatives : []);
@@ -91,11 +91,8 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           : result.sRGBHex;
         setHexInput(hex);
 
-        // 自动触发匹配
-        // 需要等待一小段时间确保状态更新
-        setTimeout(async () => {
-          await handleMatch();
-        }, 50);
+        // 直接使用取到的 hex 值触发匹配，不依赖状态更新
+        await handleMatch(hex);
       }
     } catch (err) {
       // 用户取消取色会抛出 abort 错误，这是正常的
