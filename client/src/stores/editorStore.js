@@ -47,6 +47,7 @@ export const useEditorStore = create((set, get) => ({
   zoom: 1,
   panOffset: { x: 0, y: 0 },
   showGrid: true,
+  lockMode: true, // 锁定模式：只能在未上色格子上色，默认开启
   
   history: [],
   historyIndex: -1,
@@ -69,6 +70,7 @@ export const useEditorStore = create((set, get) => ({
       zoom: 1,
       panOffset: { x: 0, y: 0 },
       showGrid: true,
+      lockMode: true,
       history: [],
       historyIndex: -1,
       isDirty: false,
@@ -96,6 +98,7 @@ export const useEditorStore = create((set, get) => ({
       currentColorIndex: palette.length > 1 ? 1 : 0,
       zoom: 1,
       panOffset: { x: 0, y: 0 },
+      lockMode: true,
       history: [],
       historyIndex: -1,
       isDirty: false,
@@ -183,22 +186,27 @@ export const useEditorStore = create((set, get) => ({
   },
 
   setPixel: (x, y, toolOverride) => {
-    const { width, height, pixels, currentColorIndex, currentTool, isDrawing } = get();
+    const { width, height, pixels, currentColorIndex, currentTool, isDrawing, lockMode } = get();
     if (x < 0 || x >= width || y < 0 || y >= height) return;
-    
+
     const idx = y * width + x;
     const activeTool = toolOverride || currentTool;
     const colorIndex = activeTool === 'eraser' ? 0 : currentColorIndex;
-    
+
     if (pixels[idx] === colorIndex) return;
-    
+
+    // 锁定模式下，只能在未上色格子（值为0）或使用橡皮擦时上色
+    if (lockMode && activeTool !== 'eraser' && pixels[idx] !== 0) {
+      return;
+    }
+
     if (!isDrawing) {
       get().pushHistory();
     }
-    
+
     const newPixels = [...pixels];
     newPixels[idx] = colorIndex;
-    
+
     set({ pixels: newPixels, isDirty: true });
   },
 
@@ -213,16 +221,21 @@ export const useEditorStore = create((set, get) => ({
   },
 
   fill: (x, y) => {
-    const { width, height, pixels, currentColorIndex } = get();
+    const { width, height, pixels, currentColorIndex, lockMode } = get();
     if (x < 0 || x >= width || y < 0 || y >= height) return;
-    
+
     const idx = y * width + x;
     const targetIndex = pixels[idx];
-    
+
+    // 锁定模式下，只能填充空白格子（值为0）
+    if (lockMode && targetIndex !== 0) {
+      return;
+    }
+
     if (targetIndex === currentColorIndex) return;
-    
+
     get().pushHistory();
-    
+
     const newPixels = floodFill(pixels, width, height, x, y, targetIndex, currentColorIndex);
     set({ pixels: newPixels, isDirty: true });
   },
@@ -298,6 +311,8 @@ export const useEditorStore = create((set, get) => ({
   setPan: (offset) => set({ panOffset: offset }),
   
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+
+  toggleLockMode: () => set((state) => ({ lockMode: !state.lockMode })),
 
   containerSize: { width: 0, height: 0 },
   

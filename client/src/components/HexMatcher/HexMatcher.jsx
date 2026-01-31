@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, X, Check, AlertCircle } from 'lucide-react';
+import { Search, X, Check, AlertCircle, Pipette } from 'lucide-react';
 import api from '../../utils/api.js';
 
 function HexMatcher({ onSelectColor, colors = [] }) {
@@ -8,6 +8,10 @@ function HexMatcher({ onSelectColor, colors = [] }) {
   const [alternatives, setAlternatives] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [picking, setPicking] = useState(false);
+
+  // 检测浏览器是否支持 EyeDropper API
+  const supportsEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
 
   function getColorHex(code) {
     const color = colors.find(c => c.code === code);
@@ -67,6 +71,43 @@ function HexMatcher({ onSelectColor, colors = [] }) {
     handleClear();
   }
 
+  async function handleEyeDropper() {
+    if (!supportsEyeDropper) {
+      setError('您的浏览器不支持取色管功能，请使用 Chrome 95+ 或 Edge 95+');
+      return;
+    }
+
+    setPicking(true);
+    setError('');
+
+    try {
+      const eyeDropper = new window.EyeDropper();
+      const result = await eyeDropper.open();
+
+      if (result?.sRGBHex) {
+        // 移除 # 前缀并设置到输入框
+        const hex = result.sRGBHex.startsWith('#')
+          ? result.sRGBHex.slice(1)
+          : result.sRGBHex;
+        setHexInput(hex);
+
+        // 自动触发匹配
+        // 需要等待一小段时间确保状态更新
+        setTimeout(async () => {
+          await handleMatch();
+        }, 50);
+      }
+    } catch (err) {
+      // 用户取消取色会抛出 abort 错误，这是正常的
+      if (err.name === 'AbortError') {
+        return;
+      }
+      setError(err.message || '取色失败');
+    } finally {
+      setPicking(false);
+    }
+  }
+
   return (
     <div className="hex-matcher">
       <div className="hex-input-row">
@@ -75,7 +116,7 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           <input
             type="text"
             className="hex-input"
-            placeholder="输入或粘贴 HEX 颜色"
+            placeholder="输入、粘贴或取色"
             value={hexInput}
             onChange={(e) => setHexInput(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -87,8 +128,17 @@ function HexMatcher({ onSelectColor, colors = [] }) {
             </button>
           )}
         </div>
-        <button 
-          className="btn btn-primary btn-match" 
+        <button
+          className="btn btn-secondary btn-eyedropper"
+          onClick={handleEyeDropper}
+          disabled={picking || loading}
+          title={supportsEyeDropper ? "从屏幕取色" : "您的浏览器不支持取色功能"}
+        >
+          <Pipette size={16} />
+          {picking ? '取色中...' : '取色'}
+        </button>
+        <button
+          className="btn btn-primary btn-match"
           onClick={handleMatch}
           disabled={!hexInput.trim() || loading}
         >
@@ -230,6 +280,20 @@ function HexMatcher({ onSelectColor, colors = [] }) {
           padding: 0.35rem 0.75rem;
           white-space: nowrap;
           font-size: 0.85rem;
+        }
+
+        .btn-eyedropper {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.35rem 0.75rem;
+          white-space: nowrap;
+          font-size: 0.85rem;
+        }
+
+        .btn-eyedropper:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .match-error {

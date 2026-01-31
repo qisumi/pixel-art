@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useBeforeUnload } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Undo2, Redo2, Pencil, Eraser, PaintBucket, Grid3X3, ZoomIn, ZoomOut, Maximize, RotateCcw, Trash2, Palette, ChevronDown, Upload, Lock, Unlock } from 'lucide-react';
 import api from '../utils/api.js';
 import { useEditorStore } from '../stores/editorStore.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
@@ -388,7 +388,28 @@ function PatternEditPage() {
               <tool.icon size={20} />
             </button>
           ))}
+          <button
+            className={`btn glass-button btn-icon tool-btn ${store.currentTool === 'fill' ? 'active' : ''}`}
+            onClick={() => store.setTool('fill')}
+            title="填充工具 (F)"
+          >
+            <PaintBucket size={20} />
+          </button>
         </div>
+
+        <div className="divider-horizontal"></div>
+
+        <div className="tool-group">
+          <button
+            className={`btn glass-button btn-icon ${store.lockMode ? 'active' : ''}`}
+            onClick={() => store.toggleLockMode()}
+            title={store.lockMode ? "锁定模式：只能在空白格子上色" : "普通模式：可以在任意格子上色"}
+          >
+            {store.lockMode ? <Lock size={20} /> : <Unlock size={20} />}
+          </button>
+        </div>
+
+        <div className="divider-horizontal"></div>
 
         <div className="divider-horizontal"></div>
 

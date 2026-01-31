@@ -220,6 +220,8 @@ function PixelGrid({
     const stageHeight = resolvedContainerSize.height;
     const gridWidth = width * BASE_PIXEL_SIZE * scaleRef.current;
     const gridHeight = height * BASE_PIXEL_SIZE * scaleRef.current;
+    // 额外的留白空间，允许画布周围多留出一些空白区域
+    const padding = Math.min(stageWidth, stageHeight) * 0.4;
 
     const clampAxis = (pos, stageSize, gridSize) => {
       if (!Number.isFinite(pos)) return 0;
@@ -228,12 +230,14 @@ function PixelGrid({
         if (!hasUserPannedRef.current) {
           return (stageSize - gridSize) / 2;
         }
-        const min = 0;
-        const max = stageSize - gridSize;
+        // 允许画布向周围多拖出 padding 的距离
+        const min = -padding;
+        const max = stageSize - gridSize + padding;
         return Math.min(max, Math.max(min, pos));
       }
-      const min = stageSize - gridSize;
-      const max = 0;
+      // 画布大于视口时，也允许额外的留白空间
+      const min = stageSize - gridSize - padding;
+      const max = padding;
       return Math.min(max, Math.max(min, pos));
     };
 

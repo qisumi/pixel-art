@@ -45,7 +45,21 @@ export function useKeyboardShortcuts({ onSave }) {
         store.setTool('eraser');
         return;
       }
-      
+
+      // F: 填充工具
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        store.setTool('fill');
+        return;
+      }
+
+      // L: 切换锁定模式
+      if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        store.toggleLockMode();
+        return;
+      }
+
       // Shift + Arrow: 平移图像
       if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.key === 'ArrowUp') {

@@ -21,6 +21,15 @@ export function KeyboardShortcutsHelp() {
       items: [
         { keys: ['B'], description: '画笔工具' },
         { keys: ['E'], description: '橡皮擦' },
+        { keys: ['F'], description: '填充工具（油漆桶）' },
+      ]
+    },
+    {
+      category: '模式',
+      items: [
+        { keys: ['L'], description: '切换锁定/解锁模式' },
+        { keys: ['🔒', '锁定'], description: '锁定模式：只能在空白格子上色' },
+        { keys: ['🔓', '解锁'], description: '普通模式：可在任意格子上色' },
       ]
     },
     {
